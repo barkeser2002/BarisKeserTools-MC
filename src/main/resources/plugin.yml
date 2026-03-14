@@ -31,4 +31,7 @@ commands:
     description: Eklenti bilgilerini ve güncellemeleri yönetir.
     permission: bariskesertools.admin
     aliases: [bkt]
-    aliases: [tum-envantere-hasar-ver-rasgele]
+  buyuktnt:
+    description: Dev boyutlu ve yüksek hasarlı bir TNT fırlatır (Boyut sadece 1.21'de desteklenir).
+    permission: bariskesertools.admin
+    usage: /buyuktnt [Güç(100-2000)]

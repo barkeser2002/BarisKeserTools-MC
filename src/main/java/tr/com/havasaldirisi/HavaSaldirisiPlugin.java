@@ -82,6 +82,12 @@ public class HavaSaldirisiPlugin extends JavaPlugin implements Listener, Command
             getCommand("chunk-yiyici").setTabCompleter(chunkYiyici);
         }
         getServer().getPluginManager().registerEvents(chunkYiyici, this);
+        
+        BuyukTntCommand buyukTntCommand = new BuyukTntCommand(this);
+        if (getCommand("buyuktnt") != null) {
+            getCommand("buyuktnt").setExecutor(buyukTntCommand);
+            getCommand("buyuktnt").setTabCompleter(buyukTntCommand);
+        }
 
         getLogger().info("Hava Saldirisi Eklentisi (Plugin) aktif edildi!");
     }
