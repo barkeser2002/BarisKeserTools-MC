@@ -16,7 +16,6 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.block.TNTPrimeEvent;
-import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
@@ -129,39 +128,6 @@ public class BuyukTntCommand implements CommandExecutor, TabCompleter, Listener 
             
             triggerFallingTnt(loc, guc);
         }
-    }
-
-    @EventHandler(priority = org.bukkit.event.EventPriority.HIGHEST, ignoreCancelled = true)
-    public void onPlayerIgniteCustomTnt(PlayerInteractEvent event) {
-        if (event.getAction() != org.bukkit.event.block.Action.RIGHT_CLICK_BLOCK) {
-            return;
-        }
-
-        if (event.getClickedBlock() == null || event.getClickedBlock().getType() != Material.TNT) {
-            return;
-        }
-
-        ItemStack hand = event.getItem();
-        if (hand == null) {
-            return;
-        }
-
-        Material igniteItem = hand.getType();
-        if (igniteItem != Material.FLINT_AND_STEEL && igniteItem != Material.FIRE_CHARGE) {
-            return;
-        }
-
-        Location loc = event.getClickedBlock().getLocation();
-        
-        // BlockPlaceEvent tetiklendikten sonra haritaya tam konum eklenmiş mi kontrolü
-        Integer guc = placedTnts.remove(loc);
-        if (guc == null) {
-            return; // Normal TNT ise geç
-        }
-
-        event.setCancelled(true);
-        event.getClickedBlock().setType(Material.AIR);
-        triggerFallingTnt(loc, guc);
     }
 
     private void triggerFallingTnt(Location origin, int guc) {
