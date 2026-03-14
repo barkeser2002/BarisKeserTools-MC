@@ -1,37 +1,37 @@
 name: BarisKeserTools
-version: 1.3.5
+version: 1.3.5.1
 main: tr.com.havasaldirisi.HavaSaldirisiPlugin
 api-version: '1.20'
-author: BarÃƒâ€Ã‚Â±Ãƒâ€¦Ã…Â¸ Keser
+author: BarÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€¦Ã‚Â¸ Keser
 
 commands:
   havasaldirisi:
-    description: Hava SaldÃƒâ€Ã‚Â±rÃƒâ€Ã‚Â± OltasÃƒâ€Ã‚Â± verir
+    description: Hava SaldÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±rÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â± OltasÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â± verir
     permission: bariskesertools.admin
     aliases: [havasaldiri]
   tntsil:
-    description: DÃƒÆ’Ã‚Â¼nyadaki tÃƒÆ’Ã‚Â¼m patlamaya hazÃƒâ€Ã‚Â±r TNT'leri siler
+    description: DÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¼nyadaki tÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¼m patlamaya hazÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±r TNT'leri siler
     permission: bariskesertools.admin
     aliases: [tntsil]
   itemsil:
-    description: Yerdeki tÃƒÆ’Ã‚Â¼m eÃƒâ€¦Ã…Â¸yalarÃƒâ€Ã‚Â± siler
+    description: Yerdeki tÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¼m eÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€¦Ã‚Â¸yalarÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â± siler
     permission: bariskesertools.admin
     aliases: [itemsil]
-  eÃƒâ€¦Ã…Â¸yayahasarver:
-    description: Elinde tuttuÃƒâ€Ã…Â¸un eÃƒâ€¦Ã…Â¸yanÃƒâ€Ã‚Â±n canÃƒâ€Ã‚Â±nÃƒâ€Ã‚Â± (durability) dÃƒÆ’Ã‚Â¼Ãƒâ€¦Ã…Â¸ÃƒÆ’Ã‚Â¼rÃƒÆ’Ã‚Â¼r
+  eÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€¦Ã‚Â¸yayahasarver:
+    description: Elinde tuttuÃƒÆ’Ã¢â‚¬ÂÃƒâ€¦Ã‚Â¸un eÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€¦Ã‚Â¸yanÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±n canÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±nÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â± (durability) dÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¼ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¼rÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¼r
     permission: bariskesertools.admin
     aliases: [esyayahasarver]
   tum-envantere-hasar-ver-rasgele:
-    description: Envanterindeki tÃƒÆ’Ã‚Â¼m hasar alabilen eÃƒâ€¦Ã…Â¸yalarÃƒâ€Ã‚Â±n durabilitysini rastgele dÃƒÆ’Ã‚Â¼Ãƒâ€¦Ã…Â¸ÃƒÆ’Ã‚Â¼rÃƒÆ’Ã‚Â¼r
+    description: Envanterindeki tÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¼m hasar alabilen eÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€¦Ã‚Â¸yalarÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±n durabilitysini rastgele dÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¼ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€¦Ã‚Â¸ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¼rÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¼r
     permission: bariskesertools.admin
   chunk-yiyici:
-    description: Olta ÃƒÆ’Ã‚Â§ekildiÃƒâ€Ã…Â¸inde gÃƒÆ’Ã‚Â¶kten sÃƒÆ’Ã‚Â¼zÃƒÆ’Ã‚Â¼len ve yeri dibe kadar silen ÃƒÆ’Ã‚Â¶zel TNT oltasÃƒâ€Ã‚Â± verir.
+    description: Olta ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§ekildiÃƒÆ’Ã¢â‚¬ÂÃƒâ€¦Ã‚Â¸inde gÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶kten sÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¼zÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¼len ve yeri dibe kadar silen ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶zel TNT oltasÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â± verir.
     permission: bariskesertools.admin
   bariskesertools:
-    description: Eklenti bilgilerini ve gÃƒÆ’Ã‚Â¼ncellemeleri yÃƒÆ’Ã‚Â¶netir.
+    description: Eklenti bilgilerini ve gÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¼ncellemeleri yÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶netir.
     permission: bariskesertools.admin
     aliases: [bkt]
   buyuktnt:
-    description: Dev boyutlu ve yÃƒÆ’Ã‚Â¼ksek hasarlÃƒâ€Ã‚Â± bir TNT fÃƒâ€Ã‚Â±rlatÃƒâ€Ã‚Â±r (Boyut sadece 1.21'de desteklenir).
+    description: Dev boyutlu ve yÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¼ksek hasarlÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â± bir TNT fÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±rlatÃƒÆ’Ã¢â‚¬ÂÃƒâ€šÃ‚Â±r (Boyut sadece 1.21'de desteklenir).
     permission: bariskesertools.admin
-    usage: /buyuktnt [GÃƒÆ’Ã‚Â¼ÃƒÆ’Ã‚Â§(100-2000)]
+    usage: /buyuktnt [GÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¼ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§(100-2000)]
