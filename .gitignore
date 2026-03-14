@@ -1,0 +1,16 @@
+node_modules/
+dist/
+.env
+.DS_Store
+*.log
+*.tmp
+*.swp
+coverage/
+build/
+/.vscode/
+/.idea/
+gradle/
+.gradle/
+build/
+gradlew
+gradlew.bat

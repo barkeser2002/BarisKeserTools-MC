@@ -1,0 +1,27 @@
+name: BarisKeserTools
+version: 1.1
+main: tr.com.havasaldirisi.HavaSaldirisiPlugin
+api-version: '1.21'
+author: Barış Keser
+
+commands:
+  havasaldirisi:
+    description: Hava Saldırı Oltası verir
+    permission: bariskesertools.admin
+    aliases: [havasaldiri]
+  tntsil:
+    description: Dünyadaki tüm patlamaya hazır TNT'leri siler
+    permission: bariskesertools.admin
+    aliases: [tntsil]
+  itemsil:
+    description: Yerdeki tüm eşyaları siler
+    permission: bariskesertools.admin
+    aliases: [itemsil]
+  eşyayahasarver:
+    description: Elinde tuttuğun eşyanın canını (durability) düşürür
+    permission: bariskesertools.admin
+    aliases: [esyayahasarver]
+  tum-envantere-hasar-ver-rasgele:
+    description: Envanterindeki tüm hasar alabilen eşyaların durabilitysini rastgele düşürür
+    permission: bariskesertools.admin
+    aliases: [tum-envantere-hasar-ver-rasgele]
