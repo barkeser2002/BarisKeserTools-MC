@@ -93,13 +93,16 @@ public class BuyukTntCommand implements CommandExecutor, TabCompleter, Listener 
         return true;
     }
 
-    @EventHandler
+    @EventHandler(priority = org.bukkit.event.EventPriority.HIGHEST)
     public void onBlockPlace(BlockPlaceEvent event) {
         ItemStack item = event.getItemInHand();
         if (item.getType() == Material.TNT && item.hasItemMeta()) {
             if (item.getItemMeta().getPersistentDataContainer().has(gucKey, PersistentDataType.INTEGER)) {
                 int guc = item.getItemMeta().getPersistentDataContainer().getOrDefault(gucKey, PersistentDataType.INTEGER, 100);
-                placedTnts.put(event.getBlock().getLocation(), guc);
+                
+                // Location map'e eklerken tamamen temiz xyz kullan
+                Location blockLoc = event.getBlock().getLocation();
+                placedTnts.put(blockLoc, guc);
             }
         }
     }
@@ -149,9 +152,11 @@ public class BuyukTntCommand implements CommandExecutor, TabCompleter, Listener 
         }
 
         Location loc = event.getClickedBlock().getLocation();
+        
+        // BlockPlaceEvent tetiklendikten sonra haritaya tam konum eklenmiş mi kontrolü
         Integer guc = placedTnts.remove(loc);
         if (guc == null) {
-            return;
+            return; // Normal TNT ise geç
         }
 
         event.setCancelled(true);
