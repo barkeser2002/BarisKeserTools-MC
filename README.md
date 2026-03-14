@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="bariskesertools.png" alt="BarisKeserTools Logo" width="300">
+</p>
+
 # BarisKeserTools-MC 🛠️💥
 
 BarisKeserTools, Minecraft (Paper/Spigot) sunucuları için gelişmiş araçlar, hasar yönetimi, oyuncu etkileşimleri ve yıkıcı "Hava Saldırısı" mekanikleri sunan modüler bir yetkili eklentisidir! Tüm Minecraft **1.20.X** ve **1.21.X** sürümleriyle eksiksiz ve geriye dönük uyumludur.
