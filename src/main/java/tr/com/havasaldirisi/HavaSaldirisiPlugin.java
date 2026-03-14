@@ -47,6 +47,10 @@ public class HavaSaldirisiPlugin extends JavaPlugin implements Listener, Command
         yayilmaKey = new NamespacedKey(this, "yayilma");
         patlamaSuresiKey = new NamespacedKey(this, "patlama_suresi");
         oyuncuHasariKey = new NamespacedKey(this, "oyuncu_hasari");
+        
+        // Github Otomatik Güncellemeyi Başlat
+        new AutoUpdater(this).checkForUpdates();
+
         getServer().getPluginManager().registerEvents(this, this);
         if (getCommand("havasaldirisi") != null) {
             getCommand("havasaldirisi").setExecutor(this);
@@ -211,7 +215,7 @@ public class HavaSaldirisiPlugin extends JavaPlugin implements Listener, Command
 
                     if (tntSayisi == 1 || yayilmaTipi.equals("tekblokiçinde")) {
                         for (int i = 0; i < tntSayisi; i++) {
-                            TNTPrimed tnt = (TNTPrimed) player.getWorld().spawnEntity(targetLoc, EntityType.TNT);
+                            TNTPrimed tnt = (TNTPrimed) player.getWorld().spawn(targetLoc, TNTPrimed.class);
                             tnt.setFuseTicks(patlamaSuresi);
                             doganTntler.add(tnt);
                         }
@@ -221,7 +225,7 @@ public class HavaSaldirisiPlugin extends JavaPlugin implements Listener, Command
                             double zOffset = (random.nextDouble() * 2 * radius) - radius;
                             
                             Location spawnLoc = targetLoc.clone().add(xOffset, 0, zOffset);
-                            TNTPrimed tnt = (TNTPrimed) player.getWorld().spawnEntity(spawnLoc, EntityType.TNT);
+                            TNTPrimed tnt = (TNTPrimed) player.getWorld().spawn(spawnLoc, TNTPrimed.class);
                             tnt.setFuseTicks(patlamaSuresi);
                             doganTntler.add(tnt);
                         }
@@ -236,7 +240,7 @@ public class HavaSaldirisiPlugin extends JavaPlugin implements Listener, Command
                                 double xOffset = -radius + (x * spacing);
                                 double zOffset = -radius + (z * spacing);
                                 Location spawnLoc = targetLoc.clone().add(xOffset, 0, zOffset);
-                                TNTPrimed tnt = (TNTPrimed) player.getWorld().spawnEntity(spawnLoc, EntityType.TNT);
+                                TNTPrimed tnt = (TNTPrimed) player.getWorld().spawn(spawnLoc, TNTPrimed.class);
                                 tnt.setFuseTicks(patlamaSuresi);
                                 doganTntler.add(tnt);
                                 count++;
@@ -255,7 +259,7 @@ public class HavaSaldirisiPlugin extends JavaPlugin implements Listener, Command
                                 double xOffset = dist * Math.cos(angle);
                                 double zOffset = dist * Math.sin(angle);
                                 Location spawnLoc = targetLoc.clone().add(xOffset, 0, zOffset);
-                                TNTPrimed tnt = (TNTPrimed) player.getWorld().spawnEntity(spawnLoc, EntityType.TNT);
+                                TNTPrimed tnt = (TNTPrimed) player.getWorld().spawn(spawnLoc, TNTPrimed.class);
                                 tnt.setFuseTicks(patlamaSuresi);
                                 doganTntler.add(tnt);
                                 count++;
@@ -263,7 +267,7 @@ public class HavaSaldirisiPlugin extends JavaPlugin implements Listener, Command
                         }
                         // Geri kalanı merkeze
                         while (count < tntSayisi) {
-                            TNTPrimed tnt = (TNTPrimed) player.getWorld().spawnEntity(targetLoc, EntityType.TNT);
+                            TNTPrimed tnt = (TNTPrimed) player.getWorld().spawn(targetLoc, TNTPrimed.class);
                             tnt.setFuseTicks(patlamaSuresi);
                             doganTntler.add(tnt);
                             count++;
@@ -273,7 +277,7 @@ public class HavaSaldirisiPlugin extends JavaPlugin implements Listener, Command
                         for (int i = 0; i < tntSayisi; i++) {
                             double xOffset = -radius + (i * spacing);
                             Location spawnLoc = targetLoc.clone().add(xOffset, 0, 0); // X ekseninde düz çizgi
-                            TNTPrimed tnt = (TNTPrimed) player.getWorld().spawnEntity(spawnLoc, EntityType.TNT);
+                            TNTPrimed tnt = (TNTPrimed) player.getWorld().spawn(spawnLoc, TNTPrimed.class);
                             tnt.setFuseTicks(patlamaSuresi);
                             doganTntler.add(tnt);
                         }
@@ -281,7 +285,7 @@ public class HavaSaldirisiPlugin extends JavaPlugin implements Listener, Command
                         for (int i = 0; i < tntSayisi; i++) {
                             double yOffset = i * 2.0; // Her tnt arasına 2 blok dikey boşluk
                             Location spawnLoc = targetLoc.clone().add(0, yOffset, 0);
-                            TNTPrimed tnt = (TNTPrimed) player.getWorld().spawnEntity(spawnLoc, EntityType.TNT);
+                            TNTPrimed tnt = (TNTPrimed) player.getWorld().spawn(spawnLoc, TNTPrimed.class);
                             tnt.setFuseTicks(patlamaSuresi);
                             doganTntler.add(tnt);
                         }
@@ -299,7 +303,7 @@ public class HavaSaldirisiPlugin extends JavaPlugin implements Listener, Command
                                 double zOffset = ringRadius * Math.sin(angle);
                                 
                                 Location spawnLoc = targetLoc.clone().add(xOffset, 0, zOffset);
-                                TNTPrimed tnt = (TNTPrimed) player.getWorld().spawnEntity(spawnLoc, EntityType.TNT);
+                                TNTPrimed tnt = (TNTPrimed) player.getWorld().spawn(spawnLoc, TNTPrimed.class);
                                 tnt.setFuseTicks(patlamaSuresi);
                                 
                                 // Dışa doğru bir momentum (velocity) ekle
@@ -312,7 +316,7 @@ public class HavaSaldirisiPlugin extends JavaPlugin implements Listener, Command
                         }
                         // Geri kalanı merkeze
                         while (count < tntSayisi) {
-                            TNTPrimed tnt = (TNTPrimed) player.getWorld().spawnEntity(targetLoc, EntityType.TNT);
+                            TNTPrimed tnt = (TNTPrimed) player.getWorld().spawn(targetLoc, TNTPrimed.class);
                             tnt.setFuseTicks(patlamaSuresi);
                             doganTntler.add(tnt);
                             count++;
@@ -325,7 +329,7 @@ public class HavaSaldirisiPlugin extends JavaPlugin implements Listener, Command
                             double zOffset = radius * Math.sin(angle);
                             
                             Location spawnLoc = targetLoc.clone().add(xOffset, 0, zOffset);
-                            TNTPrimed tnt = (TNTPrimed) player.getWorld().spawnEntity(spawnLoc, EntityType.TNT);
+                            TNTPrimed tnt = (TNTPrimed) player.getWorld().spawn(spawnLoc, TNTPrimed.class);
                             tnt.setFuseTicks(patlamaSuresi);
                             doganTntler.add(tnt);
                         }

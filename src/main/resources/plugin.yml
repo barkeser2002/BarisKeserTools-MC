@@ -1,7 +1,7 @@
 name: BarisKeserTools
 version: 1.1
 main: tr.com.havasaldirisi.HavaSaldirisiPlugin
-api-version: '1.21'
+api-version: '1.20'
 author: Barış Keser
 
 commands:
