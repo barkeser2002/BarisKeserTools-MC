@@ -365,7 +365,14 @@ public class HavaSaldirisiPlugin extends JavaPlugin implements Listener, Command
 
                         if (damageable.getDamage() >= usingItem.getType().getMaxDurability()) {
                             usingItem.setAmount(0);
-                            player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_ITEM_BREAK, 1f, 1f);
+                            // 8 blok yarıçapındaki tüm oyunculara sesi çal
+                            double radius = 8.0;
+                            Location breakLoc = player.getLocation();
+                            for (Player p : player.getWorld().getPlayers()) {
+                                if (p.getLocation().distanceSquared(breakLoc) <= radius * radius) {
+                                    p.playSound(breakLoc, org.bukkit.Sound.ENTITY_ITEM_BREAK, 1f, 1f);
+                                }
+                            }
                         }
                     }
                 }

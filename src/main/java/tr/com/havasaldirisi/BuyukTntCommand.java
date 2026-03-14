@@ -146,6 +146,7 @@ public class BuyukTntCommand implements CommandExecutor, TabCompleter, Listener 
             Bukkit.getServer().dispatchCommand(Bukkit.getConsoleSender(), cmd);
         }
 
+        // Fiiiiyuuuu ses efekti başlat (düşerken)
         new BukkitRunnable() {
             @Override
             public void run() {
@@ -153,11 +154,15 @@ public class BuyukTntCommand implements CommandExecutor, TabCompleter, Listener 
                     this.cancel();
                     return;
                 }
-
                 // Yere düştüğünde veya tamamen hareketsiz kaldığında
                 if (tnt.isOnGround() || tnt.getVelocity().lengthSquared() == 0.0) {
                     tnt.setFuseTicks(20); // 1 saniye (20 tick) sonra patla!
                     this.cancel();
+                } else {
+                    // Fiiiiyuuuu efekti (her 10 tickte bir çal)
+                    if (tnt.getFuseTicks() % 10 == 0) {
+                        tnt.getWorld().playSound(tnt.getLocation(), Sound.ENTITY_FIREWORK_ROCKET_LAUNCH, 1.2f, 1.8f);
+                    }
                 }
             }
         }.runTaskTimer(plugin, 10L, 1L); // Yarım saniye bekleyip her tick kontrol etmeye başla
