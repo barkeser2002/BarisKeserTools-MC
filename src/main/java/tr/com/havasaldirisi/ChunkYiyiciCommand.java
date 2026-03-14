@@ -53,7 +53,7 @@ public class ChunkYiyiciCommand implements CommandExecutor, org.bukkit.command.T
         }
 
         if (args.length != 3) {
-            player.sendMessage(ChatColor.RED + "Kullanım: /chunk-yiyici [İlkTntGücü(1-30)] [MatkapGücü(1-500)] [Hız(1-5)]");
+            player.sendMessage(ChatColor.RED + "Kullanım: /chunk-yiyici [İlkTntGücü(1-30)] [MatkapGücü(1-100)] [Hız(1-5)]");
             player.sendMessage(ChatColor.YELLOW + "Örnek (Normal TNT gibi başlangıç, devasa yıkım): /chunk-yiyici 4 100 5");
             return true; // İlk TNT normal oyunda 4 gücündedir.
         }
@@ -68,8 +68,8 @@ public class ChunkYiyiciCommand implements CommandExecutor, org.bukkit.command.T
                 player.sendMessage(ChatColor.RED + "İlk düşen TNT gücü en az 1, en fazla 30 olabilir! (Normal orijinal TNT = 4)");
                 return true;
             }
-            if (matkapGuc < 1 || matkapGuc > 500) {
-                player.sendMessage(ChatColor.RED + "Yeri delen matkap gücü en az 1, en fazla 500 olabilir!");
+            if (matkapGuc < 1 || matkapGuc > 100) {
+                player.sendMessage(ChatColor.RED + "Yeri delen matkap gücü en az 1, en fazla 100 olabilir!");
                 return true;
             }
             if (hiz < 1 || hiz > 5) {
@@ -109,7 +109,7 @@ public class ChunkYiyiciCommand implements CommandExecutor, org.bukkit.command.T
         if (args.length == 1) {
             return Arrays.asList("4", "10", "20", "30"); // İlk patlama gücü önerileri
         } else if (args.length == 2) {
-            return Arrays.asList("50", "100", "250", "500"); // Matkap gücü önerileri
+            return Arrays.asList("5", "10", "20", "50", "100"); // Matkap gücü önerileri
         } else if (args.length == 3) {
             return Arrays.asList("1", "2", "3", "4", "5"); // Hız seviyesi önerileri
         }
