@@ -9,8 +9,7 @@ coverage/
 build/
 /.vscode/
 /.idea/
-gradle/
+# gradle/
+# gradlew
+# gradlew.bat
 .gradle/
-build/
-gradlew
-gradlew.bat
