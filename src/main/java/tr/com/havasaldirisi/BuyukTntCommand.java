@@ -103,7 +103,7 @@ public class BuyukTntCommand implements CommandExecutor, TabCompleter, Listener 
         }
     }
 
-    @EventHandler
+    @EventHandler(priority = org.bukkit.event.EventPriority.HIGHEST)
     public void onBlockBreak(BlockBreakEvent event) {
         Location loc = event.getBlock().getLocation();
         if (placedTnts.containsKey(loc)) {
@@ -113,7 +113,7 @@ public class BuyukTntCommand implements CommandExecutor, TabCompleter, Listener 
         }
     }
 
-    @EventHandler
+    @EventHandler(priority = org.bukkit.event.EventPriority.HIGHEST)
     public void onTntPrime(TNTPrimeEvent event) {
         Location loc = event.getBlock().getLocation();
         if (placedTnts.containsKey(loc)) {
