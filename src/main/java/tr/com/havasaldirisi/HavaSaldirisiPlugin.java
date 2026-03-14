@@ -49,7 +49,14 @@ public class HavaSaldirisiPlugin extends JavaPlugin implements Listener, Command
         oyuncuHasariKey = new NamespacedKey(this, "oyuncu_hasari");
         
         // Github Otomatik Güncellemeyi Başlat
-        new AutoUpdater(this).checkForUpdates();
+        AutoUpdater updater = new AutoUpdater(this);
+        updater.startPeriodicCheck();
+
+        BarisKeserToolsCommand mainCommand = new BarisKeserToolsCommand(updater);
+        if (getCommand("bariskesertools") != null) {
+            getCommand("bariskesertools").setExecutor(mainCommand);
+            getCommand("bariskesertools").setTabCompleter(mainCommand);
+        }
 
         getServer().getPluginManager().registerEvents(this, this);
         if (getCommand("havasaldirisi") != null) {
@@ -68,6 +75,13 @@ public class HavaSaldirisiPlugin extends JavaPlugin implements Listener, Command
         if (getCommand("tum-envantere-hasar-ver-rasgele") != null) {
             getCommand("tum-envantere-hasar-ver-rasgele").setExecutor(new TumEnvantereHasarVerRasgeleCommand());
         }
+        
+        ChunkYiyiciCommand chunkYiyici = new ChunkYiyiciCommand(this);
+        if (getCommand("chunk-yiyici") != null) {
+            getCommand("chunk-yiyici").setExecutor(chunkYiyici);
+        }
+        getServer().getPluginManager().registerEvents(chunkYiyici, this);
+
         getLogger().info("Hava Saldirisi Eklentisi (Plugin) aktif edildi!");
     }
 

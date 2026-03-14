@@ -3,6 +3,7 @@ package tr.com.havasaldirisi;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import org.bukkit.Bukkit;
+import org.bukkit.command.CommandSender;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
@@ -17,12 +18,20 @@ public class AutoUpdater {
     private final JavaPlugin plugin;
     private final String repoOwner = "barkeser2002";
     private final String repoName = "BarisKeserTools-MC";
+    private boolean isUpdateReady = false;
 
     public AutoUpdater(JavaPlugin plugin) {
         this.plugin = plugin;
     }
 
-    public void checkForUpdates() {
+    public void startPeriodicCheck() {
+        // İlk kontrol 10sn (200 tick) sonra. Daha sonraki döngüler 30 dakikada bir (30 * 60 * 20 = 36000 tick)
+        Bukkit.getScheduler().runTaskTimerAsynchronously(plugin, () -> {
+            checkForUpdates(null, true);
+        }, 200L, 36000L);
+    }
+
+    public void checkForUpdates(CommandSender sender, boolean forceDownload) {
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
             try {
                 URL apiURL = new URL("https://api.github.com/repos/" + repoOwner + "/" + repoName + "/releases/latest");
@@ -38,47 +47,53 @@ public class AutoUpdater {
                     String latestTag = json.get("tag_name").getAsString();
                     String currentVersion = plugin.getDescription().getVersion();
 
-                    // V sembolünü vs. temizliyoruz ki version numaraları sadece rakam olsun (örn v1.1 -> 1.1)
                     String cleanLatest = latestTag.replace("v", "");
                     String cleanCurrent = currentVersion.replace("v", "");
 
                     if (!cleanLatest.equals(cleanCurrent)) {
-                        plugin.getLogger().warning("========================================");
-                        plugin.getLogger().warning("Yeni bir eklenti surumu bulundu! Versiyon: " + latestTag);
-                        plugin.getLogger().warning("Mevcut kullandıgınız surum: " + currentVersion);
-                        plugin.getLogger().warning("Guncel JAR GitHub uzerinden indiriliyor...");
-                        plugin.getLogger().warning("========================================");
-
+                        sendMessage(sender, "§e[BarisKeserTools] §aYeni bir güncelleme mevcut! Versiyon: §f" + latestTag);
+                        
                         if (json.has("assets") && !json.getAsJsonArray("assets").isEmpty()) {
                             String downloadUrl = json.getAsJsonArray("assets").get(0)
                                     .getAsJsonObject().get("browser_download_url").getAsString();
-                            downloadFile(downloadUrl);
-                        } else {
-                            plugin.getLogger().warning("Surum bulunmasina ragmen release assets icinde .jar dosyasi bulunamadi!");
+                            
+                            if (forceDownload) {
+                                downloadFile(downloadUrl, sender);
+                            } else {
+                                sendMessage(sender, "§e[BarisKeserTools] §aHemen indirmek için §f/bariskesertools update §akomutunu kullanin.");
+                            }
                         }
                     } else {
-                        plugin.getLogger().info("Plugin Github uzerindeki guncel en son surumu (" + latestTag + ") kullaniyor.");
+                        sendMessage(sender, "§e[BarisKeserTools] §aMevcut sürüm günceldir! (" + latestTag + ")");
                     }
+                } else if (statusCode == 404) {
+                    sendMessage(sender, "§cGithub üzerinde herhangi bir sürüm bulunamadı (Henüz release yok).");
                 }
             } catch (Exception e) {
-                plugin.getLogger().warning("Github uzerinden guncelleme kontrolu sirasinda bir hata ile karsilasildi: " + e.getMessage());
+                sendMessage(sender, "§cGüncelleme kontrolü sırasında hata oluştu: " + e.getMessage());
             }
         });
     }
 
-    private void downloadFile(String fileUrl) {
+    private void downloadFile(String fileUrl, CommandSender sender) {
+        if (isUpdateReady) {
+            sendMessage(sender, "§e[BarisKeserTools] §aGüncelleme zaten '.jar' halinde indi! Sunucu restart bekliyor.");
+            return;
+        }
+
         try {
+            sendMessage(sender, "§e[BarisKeserTools] §7Github'dan yeni jar dosyasi sunucuya çekiliyor...");
             URL url = new URL(fileUrl);
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
             connection.setRequestProperty("User-Agent", "BarisKeserTools-Updater");
 
-            // Spigot / Paper Update klasörü mantığı - update klasörüne inen dosyalar bir dahaki restart'da eski dosyanın yerine geçer
             File updateFolder = new File(plugin.getDataFolder().getParentFile(), plugin.getServer().getUpdateFolder());
             if (!updateFolder.exists()) {
                 updateFolder.mkdirs();
             }
 
-            File updateFile = new File(updateFolder, "BarisKeserTools-" + plugin.getDescription().getVersion() + "-update.jar");
+            // Dosya adının BarisKeserTools_update.jar olmasını sağlıyoruz
+            File updateFile = new File(updateFolder, "BarisKeserTools-update.jar");
 
             InputStream in = connection.getInputStream();
             FileOutputStream out = new FileOutputStream(updateFile);
@@ -90,10 +105,21 @@ public class AutoUpdater {
             out.close();
             in.close();
 
-            plugin.getLogger().info("Yeni eklenti dosyasi basariyla " + updateFolder.getName() + " klasorune indirildi!");
-            plugin.getLogger().info("Sunucu YENIDEN BASLATILDIGINDA (Restart) veya /reload atildiginda guncelleme otomatik uygulanacaktir.");
+            isUpdateReady = true;
+            sendMessage(sender, "§e[BarisKeserTools] §aBaşarılı! Yeni sürüm update klasörüne indirildi.");
+            sendMessage(sender, "§e[BarisKeserTools] §aSunucu YENİDEN BAŞLATILDIĞINDA (Restart) otomatik olarak kurulacak.");
+            
         } catch (Exception e) {
-            plugin.getLogger().warning("Guncelleme dosyasi indirilirken bir hata olustu: " + e.getMessage());
+            sendMessage(sender, "§cGüncelleme indirilirken bir hata ile karşılaşıldı: " + e.getMessage());
+        }
+    }
+
+    private void sendMessage(CommandSender sender, String message) {
+        // Eğer sender verilmişse (oyuncu vs.) chat'e yazar, verilmemişse konsola okutur.
+        if (sender != null) {
+            sender.sendMessage(message);
+        } else {
+            plugin.getLogger().info(message.replaceAll("§[0-9a-fA-Fk-oK-OrR]", ""));
         }
     }
 }

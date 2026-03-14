@@ -36,7 +36,7 @@ jobs:
       - name: Build with Gradle
         run: ./gradlew build
 
-      - name: Create Release
+      - name: Publish to GitHub Releases
         uses: softprops/action-gh-release@v2
         with:
           tag_name: "v${{ env.VERSION }}"
@@ -46,3 +46,34 @@ jobs:
           files: build/libs/*.jar
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish to Modrinth
+        uses: Kir-Antipov/mc-publish@v3.3
+        with:
+          modrinth-id: 'emZl4lnH'
+          modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
+          files: build/libs/*.jar
+          name: "BarisKeserTools v${{ env.VERSION }}"
+          version: ${{ env.VERSION }}
+          version-type: release
+          loaders: |
+            paper
+            purpur
+            spigot
+            folia
+          game-versions: |
+            1.20
+            1.20.1
+            1.20.2
+            1.20.4
+            1.20.6
+            1.21
+            1.21.1
+            1.21.3
+            1.21.5
+            1.21.6
+            1.21.7
+            1.21.8
+            1.21.9
+            1.21.10
+            1.21.11
