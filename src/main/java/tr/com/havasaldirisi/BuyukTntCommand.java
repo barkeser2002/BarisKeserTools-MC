@@ -132,7 +132,7 @@ public class BuyukTntCommand implements CommandExecutor, TabCompleter, Listener 
         // 100 güç -> 1.0 boyut, 2000 güç -> 20.0 boyut
         float scale = 1.0f + ((float) (guc - 100) / 1900f) * 19.0f;
 
-        Location spawnLoc = origin.clone().add(0.5, 30.0, 0.5); // Yerden 30 blok yukarıda belirir
+        Location spawnLoc = origin.clone().add(0.5, 90.0, 0.5); // Yerden 90 blok yukarıda belirir
         TNTPrimed tnt = origin.getWorld().spawn(spawnLoc, TNTPrimed.class);
         tnt.setYield((float) guc); // TNT Patlama Gücü
         tnt.setFuseTicks(400); // Havada süzülmesi için geniş süre ver (yere değince aniden patlayacağı için)

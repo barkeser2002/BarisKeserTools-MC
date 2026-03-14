@@ -125,12 +125,8 @@ public class ChunkYiyiciCommand implements CommandExecutor, org.bukkit.command.T
             return;
         }
 
-        ItemStack item = player.getInventory().getItemInMainHand();
-
-        if (item == null || !item.hasItemMeta()) {
-            item = player.getInventory().getItemInOffHand();
-            if (item == null || !item.hasItemMeta()) return;
-        }
+        ItemStack item = event.getItem();
+        if (item == null || !item.hasItemMeta()) return;
 
         if (item.getItemMeta().getPersistentDataContainer().has(oltaKey, PersistentDataType.BYTE)) {
             
@@ -179,6 +175,17 @@ public class ChunkYiyiciCommand implements CommandExecutor, org.bukkit.command.T
                     }
                 }
             }.runTaskTimer(plugin, 4L, 1L); // 4 tick (0.2sn) sonra kontrol etmeye başla, sonra her tick (0.05sn) devam et.
+            
+            // Oltanın dayanıklılığını (canını) 1 azalt
+            if (meta instanceof org.bukkit.inventory.meta.Damageable damageable) {
+                damageable.setDamage(damageable.getDamage() + 1);
+                item.setItemMeta(damageable);
+
+                if (damageable.getDamage() >= item.getType().getMaxDurability()) {
+                    item.setAmount(0);
+                    player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_ITEM_BREAK, 1f, 1f);
+                }
+            }
         }
     }
 

@@ -191,17 +191,9 @@ public class HavaSaldirisiPlugin extends JavaPlugin implements Listener, Command
         }
 
         // Olta kontrolü
-        ItemStack mainItem = player.getInventory().getItemInMainHand();
-        ItemStack offItem = player.getInventory().getItemInOffHand();
+        ItemStack usingItem = event.getItem();
 
-        ItemStack usingItem = null;
-        if (mainItem.getType() == Material.FISHING_ROD) {
-            usingItem = mainItem;
-        } else if (offItem.getType() == Material.FISHING_ROD) {
-            usingItem = offItem;
-        }
-
-        if (usingItem != null && usingItem.getItemMeta() != null) {
+        if (usingItem != null && usingItem.getType() == Material.FISHING_ROD && usingItem.getItemMeta() != null) {
             if (usingItem.getItemMeta().getPersistentDataContainer().has(oltaKey, PersistentDataType.BYTE)) {
 
                 event.setCancelled(true); // Oltanın ip atmasını tamamen iptal et, sadece sağ tık mekaniği çalışsın!
