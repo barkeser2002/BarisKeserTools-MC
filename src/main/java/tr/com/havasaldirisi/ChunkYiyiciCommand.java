@@ -24,7 +24,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.Arrays;
 
-public class ChunkYiyiciCommand implements CommandExecutor, Listener {
+public class ChunkYiyiciCommand implements CommandExecutor, org.bukkit.command.TabCompleter, Listener {
 
     private final JavaPlugin plugin;
     private final NamespacedKey oltaKey;
@@ -103,9 +103,28 @@ public class ChunkYiyiciCommand implements CommandExecutor, Listener {
         return true;
     }
 
+    @org.jetbrains.annotations.Nullable
+    @Override
+    public java.util.List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, @NotNull String[] args) {
+        if (args.length == 1) {
+            return Arrays.asList("4", "10", "20", "30"); // İlk patlama gücü önerileri
+        } else if (args.length == 2) {
+            return Arrays.asList("50", "100", "250", "500"); // Matkap gücü önerileri
+        } else if (args.length == 3) {
+            return Arrays.asList("1", "2", "3", "4", "5"); // Hız seviyesi önerileri
+        }
+        return new java.util.ArrayList<>();
+    }
+
     @EventHandler
-    public void onFish(PlayerFishEvent event) {
+    public void onPlayerInteract(org.bukkit.event.player.PlayerInteractEvent event) {
         Player player = event.getPlayer();
+
+        if (event.getAction() != org.bukkit.event.block.Action.RIGHT_CLICK_AIR && 
+            event.getAction() != org.bukkit.event.block.Action.RIGHT_CLICK_BLOCK) {
+            return;
+        }
+
         ItemStack item = player.getInventory().getItemInMainHand();
 
         if (item == null || !item.hasItemMeta()) {
@@ -114,41 +133,40 @@ public class ChunkYiyiciCommand implements CommandExecutor, Listener {
         }
 
         if (item.getItemMeta().getPersistentDataContainer().has(oltaKey, PersistentDataType.BYTE)) {
-            if (event.getState() == PlayerFishEvent.State.REEL_IN || event.getState() == PlayerFishEvent.State.IN_GROUND) {
-                
-                // --- İSTENEN DEĞİŞİKLİK: Artık iğnenin düştüğü yer değil "Baktığımız yer" hedefleniyor ---
-                Block targetBlock = player.getTargetBlockExact(200); // 200 blok uzağa kadar oyuncunun gözünün çarptığı bloğu alır
-                Location target;
-                
-                if (targetBlock != null) {
-                    target = targetBlock.getLocation(); // Bloğa bakıyorsa
-                } else {
-                    Location eyeLoc = player.getEyeLocation();
-                    target = eyeLoc.clone().add(eyeLoc.getDirection().multiply(50)); // Eğer tamamen havaya bakıyorsa 50 blok ileri atar
-                }
+            
+            event.setCancelled(true); // Oltanın ip atmasını (animasyonu) tamamen durdur
 
-                // Oltanın metadatasından kaydedilmiş sayıları okuma
-                ItemMeta meta = item.getItemMeta();
-                int ilkGuc = meta.getPersistentDataContainer().getOrDefault(ilkGucKey, PersistentDataType.INTEGER, 4);
-                int matkapGuc = meta.getPersistentDataContainer().getOrDefault(matkapGucKey, PersistentDataType.INTEGER, 50);
-                int hiz = meta.getPersistentDataContainer().getOrDefault(hizKey, PersistentDataType.INTEGER, 3);
-
-                Location spawnLoc = target.clone().add(0, 10, 0); // Hedefin tam 10 blok yukarısı
-                TNTPrimed tnt = player.getWorld().spawn(spawnLoc, TNTPrimed.class);
-                tnt.setYield((float) ilkGuc); // Oltaya atanan "İlk TNT" gücü devreye girdi.
-                tnt.setFuseTicks(60); // 3 saniye havadan süzülür
-                
-                // Alt matkaba yayılacak olan gücü ve hızı bu ilk TNT'ye etiket olarak yapıştırıyoruz
-                tnt.setMetadata("chunk_yiyici_root", new FixedMetadataValue(plugin, true));
-                tnt.setMetadata("chunk_yiyici_matkap_guc", new FixedMetadataValue(plugin, matkapGuc));
-                tnt.setMetadata("chunk_yiyici_hiz", new FixedMetadataValue(plugin, hiz));
-
-                event.getHook().remove(); // Oltayı çektikten sonra misina şamandırası yok olsun
+            // --- İSTENEN DEĞİŞİKLİK: Artık iğnenin düştüğü yer değil "Baktığımız yer" hedefleniyor ---
+            Block targetBlock = player.getTargetBlockExact(200); // 200 blok uzağa kadar oyuncunun gözünün çarptığı bloğu alır
+            Location target;
+            
+            if (targetBlock != null) {
+                target = targetBlock.getLocation(); // Bloğa bakıyorsa
+            } else {
+                Location eyeLoc = player.getEyeLocation();
+                target = eyeLoc.clone().add(eyeLoc.getDirection().multiply(50)); // Eğer tamamen havaya bakıyorsa 50 blok ileri atar
             }
+
+            // Oltanın metadatasından kaydedilmiş sayıları okuma
+            ItemMeta meta = item.getItemMeta();
+            int ilkGuc = meta.getPersistentDataContainer().getOrDefault(ilkGucKey, PersistentDataType.INTEGER, 4);
+            int matkapGuc = meta.getPersistentDataContainer().getOrDefault(matkapGucKey, PersistentDataType.INTEGER, 50);
+            int hiz = meta.getPersistentDataContainer().getOrDefault(hizKey, PersistentDataType.INTEGER, 3);
+
+            Location spawnLoc = target.clone().add(0, 10, 0); // Hedefin tam 10 blok yukarısı
+            TNTPrimed tnt = player.getWorld().spawn(spawnLoc, TNTPrimed.class);
+            tnt.setYield((float) ilkGuc); // Oltaya atanan "İlk TNT" gücü devreye girdi.
+            tnt.setFuseTicks(60); // 3 saniye havadan süzülür
+            
+            // Alt matkaba yayılacak olan gücü ve hızı bu ilk TNT'ye etiket olarak yapıştırıyoruz
+            tnt.setMetadata("chunk_yiyici_root", new FixedMetadataValue(plugin, true));
+            tnt.setMetadata("chunk_yiyici_matkap_guc", new FixedMetadataValue(plugin, matkapGuc));
+            tnt.setMetadata("chunk_yiyici_hiz", new FixedMetadataValue(plugin, hiz));
         }
     }
 
     @EventHandler
+
     public void onExplode(EntityExplodeEvent event) {
         if (event.getEntity() instanceof TNTPrimed tnt) {
 

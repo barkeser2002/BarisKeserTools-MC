@@ -10,7 +10,7 @@ import org.bukkit.inventory.meta.Damageable;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.jetbrains.annotations.NotNull;
 
-public class EsyayaHasarVerCommand implements CommandExecutor {
+public class EsyayaHasarVerCommand implements CommandExecutor, org.bukkit.command.TabCompleter {
 
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, String[] args) {
@@ -58,5 +58,14 @@ public class EsyayaHasarVerCommand implements CommandExecutor {
         }
 
         return true;
+    }
+
+    @org.jetbrains.annotations.Nullable
+    @Override
+    public java.util.List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, @NotNull String[] args) {
+        if (args.length == 1) {
+            return java.util.Arrays.asList("10", "50", "100", "500", "1000"); // Örnek hasar miktarları
+        }
+        return new java.util.ArrayList<>();
     }
 }

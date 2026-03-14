@@ -79,6 +79,7 @@ public class HavaSaldirisiPlugin extends JavaPlugin implements Listener, Command
         ChunkYiyiciCommand chunkYiyici = new ChunkYiyiciCommand(this);
         if (getCommand("chunk-yiyici") != null) {
             getCommand("chunk-yiyici").setExecutor(chunkYiyici);
+            getCommand("chunk-yiyici").setTabCompleter(chunkYiyici);
         }
         getServer().getPluginManager().registerEvents(chunkYiyici, this);
 
@@ -175,8 +176,13 @@ public class HavaSaldirisiPlugin extends JavaPlugin implements Listener, Command
     }
 
     @EventHandler
-    public void onPlayerFish(PlayerFishEvent event) {
+    public void onPlayerInteract(org.bukkit.event.player.PlayerInteractEvent event) {
         Player player = event.getPlayer();
+
+        if (event.getAction() != org.bukkit.event.block.Action.RIGHT_CLICK_AIR && 
+            event.getAction() != org.bukkit.event.block.Action.RIGHT_CLICK_BLOCK) {
+            return;
+        }
 
         // Olta kontrolü
         ItemStack mainItem = player.getInventory().getItemInMainHand();
@@ -192,37 +198,32 @@ public class HavaSaldirisiPlugin extends JavaPlugin implements Listener, Command
         if (usingItem != null && usingItem.getItemMeta() != null) {
             if (usingItem.getItemMeta().getPersistentDataContainer().has(oltaKey, PersistentDataType.BYTE)) {
 
-                // 1) Şamandırayı yok et (görsel kirlilik olmaması için)
-                if (event.getHook() != null) {
-                    event.getHook().remove();
+                event.setCancelled(true); // Oltanın ip atmasını tamamen iptal et, sadece sağ tık mekaniği çalışsın!
+
+                Location eyeLoc = player.getEyeLocation();
+                
+                int tntSayisi = usingItem.getItemMeta().getPersistentDataContainer().getOrDefault(tntSayisiKey, PersistentDataType.INTEGER, 1);
+                int yukseklik = usingItem.getItemMeta().getPersistentDataContainer().getOrDefault(yukseklikKey, PersistentDataType.INTEGER, 25);
+                int patlamaSuresi = usingItem.getItemMeta().getPersistentDataContainer().getOrDefault(patlamaSuresiKey, PersistentDataType.INTEGER, 80);
+                String yayilmaTipi = usingItem.getItemMeta().getPersistentDataContainer().getOrDefault(yayilmaKey, PersistentDataType.STRING, "yuvarlak");
+                
+                if (tntSayisi > 2048) tntSayisi = 2048;
+
+                // Mouse ile bakılan bloğun koordinatını bul
+                Location targetLoc = null;
+                int maxDistance = 100;
+                org.bukkit.block.Block targetBlock = player.getTargetBlockExact(maxDistance);
+                if (targetBlock != null && targetBlock.getType() != Material.AIR) {
+                    targetLoc = targetBlock.getLocation().clone().add(0.5, yukseklik, 0.5);
+                } else {
+                    // Hiç blok yoksa, ileriye doğru git ve üstüne at
+                    targetLoc = eyeLoc.clone().add(eyeLoc.getDirection().multiply(20));
+                    targetLoc.add(0, yukseklik, 0);
                 }
 
-                // 2) Sadece oltayı "attığında" çalışır, çektiğinde değil
-                if (event.getState() == PlayerFishEvent.State.FISHING) {
-                    Location eyeLoc = player.getEyeLocation();
-                    
-                    int tntSayisi = usingItem.getItemMeta().getPersistentDataContainer().getOrDefault(tntSayisiKey, PersistentDataType.INTEGER, 1);
-                    int yukseklik = usingItem.getItemMeta().getPersistentDataContainer().getOrDefault(yukseklikKey, PersistentDataType.INTEGER, 25);
-                    int patlamaSuresi = usingItem.getItemMeta().getPersistentDataContainer().getOrDefault(patlamaSuresiKey, PersistentDataType.INTEGER, 80);
-                    String yayilmaTipi = usingItem.getItemMeta().getPersistentDataContainer().getOrDefault(yayilmaKey, PersistentDataType.STRING, "yuvarlak");
-                    
-                    if (tntSayisi > 2048) tntSayisi = 2048;
-
-                    // Mouse ile bakılan bloğun koordinatını bul
-                    Location targetLoc = null;
-                    int maxDistance = 100;
-                    org.bukkit.block.Block targetBlock = player.getTargetBlockExact(maxDistance);
-                    if (targetBlock != null && targetBlock.getType() != Material.AIR) {
-                        targetLoc = targetBlock.getLocation().clone().add(0.5, yukseklik, 0.5);
-                    } else {
-                        // Hiç blok yoksa, ileriye doğru git ve üstüne at
-                        targetLoc = eyeLoc.clone().add(eyeLoc.getDirection().multiply(20));
-                        targetLoc.add(0, yukseklik, 0);
-                    }
-
-                    // 3) TNT'leri İstenilen Şekilde Spawnla
-                    double radius = Math.min(10.0, tntSayisi * 0.5); // Şekiller için genel yarıçap baz alınacak değer
-                    Random random = new Random();
+                // 3) TNT'leri İstenilen Şekilde Spawnla
+                double radius = Math.min(10.0, tntSayisi * 0.5); // Şekiller için genel yarıçap baz alınacak değer
+                Random random = new Random();
                     
                     double finalHasar = usingItem.getItemMeta().getPersistentDataContainer().getOrDefault(oyuncuHasariKey, PersistentDataType.DOUBLE, -1.0);
                     List<TNTPrimed> doganTntler = new ArrayList<>();
