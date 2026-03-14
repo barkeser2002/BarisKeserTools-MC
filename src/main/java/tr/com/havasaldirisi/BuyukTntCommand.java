@@ -70,15 +70,15 @@ public class BuyukTntCommand implements CommandExecutor, TabCompleter, Listener 
         }
 
         if (args.length != 1) {
-            player.sendMessage(ChatColor.RED + "Kullanım: /buyuktnt [Güç(100-2000)]");
+            player.sendMessage(ChatColor.RED + "Kullanım: /buyuktnt [Güç(1-2000)]");
             return true;
         }
 
         int guc;
         try {
             guc = Integer.parseInt(args[0]);
-            if (guc < 100 || guc > 2000) {
-                player.sendMessage(ChatColor.RED + "Güç değeri 100 ile 2000 arasında olmalıdır!");
+            if (guc < 1 || guc > 2000) {
+                player.sendMessage(ChatColor.RED + "Güç değeri 1 ile 2000 arasında olmalıdır!");
                 return true;
             }
         } catch (NumberFormatException e) {
