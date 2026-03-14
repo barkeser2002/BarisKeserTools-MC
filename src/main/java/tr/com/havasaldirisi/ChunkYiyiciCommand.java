@@ -156,12 +156,29 @@ public class ChunkYiyiciCommand implements CommandExecutor, org.bukkit.command.T
             Location spawnLoc = target.clone().add(0, 10, 0); // Hedefin tam 10 blok yukarısı
             TNTPrimed tnt = player.getWorld().spawn(spawnLoc, TNTPrimed.class);
             tnt.setYield((float) ilkGuc); // Oltaya atanan "İlk TNT" gücü devreye girdi.
-            tnt.setFuseTicks(60); // 3 saniye havadan süzülür
+            tnt.setFuseTicks(200); // Havada kalma süresi uzun tutulur (Yere değene kadar Max 10 sn)
             
             // Alt matkaba yayılacak olan gücü ve hızı bu ilk TNT'ye etiket olarak yapıştırıyoruz
             tnt.setMetadata("chunk_yiyici_root", new FixedMetadataValue(plugin, true));
             tnt.setMetadata("chunk_yiyici_matkap_guc", new FixedMetadataValue(plugin, matkapGuc));
             tnt.setMetadata("chunk_yiyici_hiz", new FixedMetadataValue(plugin, hiz));
+
+            // TNT'yi takip edip yere değdiğinde anında patlatacak Scheduler
+            new org.bukkit.scheduler.BukkitRunnable() {
+                @Override
+                public void run() {
+                    if (tnt.isDead() || !tnt.isValid()) {
+                        this.cancel();
+                        return;
+                    }
+                    
+                    // Eğer TNT yere değmişse (isOnGround) veya block içindeyse anında parçalanır.
+                    if (tnt.isOnGround() || tnt.getVelocity().lengthSquared() == 0.0) {
+                        tnt.setFuseTicks(0); // Süreyi sıfırla, hemen patla!
+                        this.cancel();
+                    }
+                }
+            }.runTaskTimer(plugin, 4L, 1L); // 4 tick (0.2sn) sonra kontrol etmeye başla, sonra her tick (0.05sn) devam et.
         }
     }
 
