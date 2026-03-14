@@ -372,7 +372,6 @@ public class HavaSaldirisiPlugin extends JavaPlugin implements Listener, Command
                 }
             }
         }
-    }
     
     @EventHandler
     public void onEntityDamageByEntity(EntityDamageByEntityEvent event) {
