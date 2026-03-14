@@ -131,9 +131,8 @@ public class BuyukTntCommand implements CommandExecutor, TabCompleter, Listener 
     }
 
     private void triggerFallingTnt(Location origin, int guc) {
-        // Değerlerin orantılı büyümesini sağlayan yegane ölçek formülü
-        // 100 güç -> 1.0 boyut, 2000 güç -> 20.0 boyut
-        float scale = 9.0f;
+        // Boyut her zaman 8.0 olarak sabitlendi
+        float scale = 10.0f;
 
         Location spawnLoc = origin.clone().add(0.5, 90.0, 0.5); // Yerden 90 blok yukarıda belirir
         TNTPrimed tnt = origin.getWorld().spawn(spawnLoc, TNTPrimed.class);
