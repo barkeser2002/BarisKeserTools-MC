@@ -161,7 +161,7 @@ public class BuyukTntCommand implements CommandExecutor, TabCompleter, Listener 
                 } else {
                     // Fiiiiyuuuu efekti (her 10 tickte bir çal)
                     if (tnt.getFuseTicks() % 10 == 0) {
-                        tnt.getWorld().playSound(tnt.getLocation(), Sound.ENTITY_FIREWORK_ROCKET_LAUNCH, 1.2f, 1.8f);
+                        tnt.getWorld().playSound(tnt.getLocation(), org.bukkit.Sound.ENTITY_FIREWORK_ROCKET_LAUNCH, 1.2f, 1.8f);
                     }
                 }
             }
