@@ -18,9 +18,9 @@ echo.
 echo [1/3] Dosyalar guncelleniyor (build.gradle.kts ve plugin.yml)...
 
 :: BOM olmadan UTF-8 olarak kaydetmek icin PowerShell ayari
-powershell -Command "$utf8NoBom = New-Object System.Text.UTF8Encoding $false; $content = Get-Content build.gradle.kts -Raw; $content = $content -replace '(?m)^version = \".*\"', 'version = \"%new_version%\"'; [IO.File]::WriteAllText('build.gradle.kts', $content, $utf8NoBom)"
+powershell -Command "$utf8NoBom = New-Object System.Text.UTF8Encoding $false; $content = Get-Content build.gradle.kts -Raw -Encoding UTF8; $content = $content -replace '(?m)^version = \"".*\""', 'version = \""%new_version%\""'; [IO.File]::WriteAllText('build.gradle.kts', $content, $utf8NoBom)"
 
-powershell -Command "$utf8NoBom = New-Object System.Text.UTF8Encoding $false; $content = Get-Content src\main\resources\plugin.yml -Raw; $content = $content -replace '(?m)^version: .*', 'version: %new_version%'; [IO.File]::WriteAllText('src\main\resources\plugin.yml', $content, $utf8NoBom)"
+powershell -Command "$utf8NoBom = New-Object System.Text.UTF8Encoding $false; $content = Get-Content src\main\resources\plugin.yml -Raw -Encoding UTF8; $content = $content -replace '(?m)^version: .*', 'version: %new_version%'; [IO.File]::WriteAllText('src\main\resources\plugin.yml', $content, $utf8NoBom)"
 
 echo.
 echo [2/3] Git'e ekleniyor ve Commitleniyor...
