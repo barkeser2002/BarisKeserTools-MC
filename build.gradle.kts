@@ -3,7 +3,7 @@ plugins {
 }
 
 group = "tr.com"
-version = "1.3.6"
+version = "1.3.6.1"
 
 repositories {
     mavenCentral()
