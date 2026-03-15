@@ -28,6 +28,7 @@ public class FloorIsLavaCommand implements CommandExecutor, TabCompleter, Listen
 
     private final JavaPlugin plugin;
     private final Map<UUID, LavaGame> activeGames = new HashMap<>();
+    private final Map<UUID, Location> pendingSpectators = new HashMap<>();
 
     public FloorIsLavaCommand(JavaPlugin plugin) {
         this.plugin = plugin;
@@ -225,6 +226,47 @@ public class FloorIsLavaCommand implements CommandExecutor, TabCompleter, Listen
     }
 
     @EventHandler
+    public void onPlayerDeath(org.bukkit.event.entity.PlayerDeathEvent event) {
+        Player p = event.getEntity();
+        World world = p.getWorld();
+        if (activeGames.containsKey(world.getUID())) {
+            LavaGame game = activeGames.get(world.getUID());
+            Location respawnLoc;
+            if (game != null) {
+                // Aktif oyun sırasında ölürlerse:
+                respawnLoc = game.center.clone();
+                // Lav yüksekliğinden en az 20 blok veya 100 y seviyesinde doğsun
+                respawnLoc.setY(Math.max(game.currentY + 20, 100));
+            } else {
+                // Hazırlık aşamasında ölürlerse (olası değil ama garantileyelim)
+                respawnLoc = world.getSpawnLocation();
+                respawnLoc.setY(world.getHighestBlockYAt(respawnLoc.getBlockX(), respawnLoc.getBlockZ()) + 10);
+            }
+            pendingSpectators.put(p.getUniqueId(), respawnLoc);
+        }
+    }
+
+    @EventHandler
+    public void onPlayerRespawn(org.bukkit.event.player.PlayerRespawnEvent event) {
+        Player p = event.getPlayer();
+        if (pendingSpectators.containsKey(p.getUniqueId())) {
+            Location loc = pendingSpectators.remove(p.getUniqueId());
+            event.setRespawnLocation(loc); // Kendi dünyasında oyunu izleyeceği yere ışınla
+            
+            // Seyirci modunu küçük bir gecikmeyle veriyoruz ki spigot respawn sırasında iptal etmesin
+            new BukkitRunnable() {
+                @Override
+                public void run() {
+                    if (p.isOnline()) {
+                        p.setGameMode(org.bukkit.GameMode.SPECTATOR);
+                        p.sendMessage(ChatColor.RED + "Öldünüz ve elendiniz! Artık oyunu izleyici modunda seyredebilirsiniz.");
+                    }
+                }
+            }.runTaskLater(plugin, 2L);
+        }
+    }
+
+    @EventHandler
     public void onPlayerPvP(EntityDamageByEntityEvent event) {
         if (event.getEntity() instanceof Player pVictim && event.getDamager() instanceof Player pAttacker) {
             World world = pVictim.getWorld();
@@ -271,7 +313,7 @@ public class FloorIsLavaCommand implements CommandExecutor, TabCompleter, Listen
     private class LavaGame extends BukkitRunnable {
         private final World world;
         private final int borderSize;
-        private final Location center;
+        public final Location center;
         private final BossBar bossBar;
         
         // --- Oyun Ayarları ---
