@@ -84,23 +84,44 @@ public class FloorIsLavaCommand implements CommandExecutor, TabCompleter, Listen
                         Location loc = w.getSpawnLocation();
                         int biomeAttempts = 0;
                         
-                        // Okyanus veya Nehir olmayan bir biyom bulana kadar spawn noktasını kaydır
-                        while (biomeAttempts < 150) {
-                            String biomeName = w.getBiome(loc.getBlockX(), loc.getBlockY(), loc.getBlockZ()).name();
-                            if (biomeName.contains("OCEAN") || biomeName.contains("RIVER") || biomeName.contains("SWAMP")) {
-                                loc.add(500, 0, 500);
-                                loc.setY(w.getHighestBlockYAt(loc.getBlockX(), loc.getBlockZ()));
+                        int borderSizeForPreload = pendingBorders.getOrDefault(worldName, 200);
+                        int checkRadius = borderSizeForPreload / 2;
+                        
+                        // Oyun alanı(Sınır) boyunca Okyanus/Nehir vb. barındırmayan devasa bir kara parçası bulana kadar ara
+                        boolean badArea = true;
+                        while (biomeAttempts < 300 && badArea) {
+                            badArea = false;
+                            
+                            // Merkezden başlayarak etraftaki alanlardan örnek biyomlar kontrol ediliyor
+                            // Sadece bir noktayı değil chunk chunk alanı tarıyor
+                            int step = Math.max(16, checkRadius / 4);
+                            
+                            checkLoop:
+                            for (int dx = -checkRadius; dx <= checkRadius; dx += step) {
+                                for (int dz = -checkRadius; dz <= checkRadius; dz += step) {
+                                    // Y: 64 verip geçiyoruz ki getHighestY ile yüzlerce chunk yaratıp lag yapmasın
+                                    String bName = w.getBiome(loc.getBlockX() + dx, 64, loc.getBlockZ() + dz).name();
+                                    if (bName.contains("OCEAN") || bName.contains("RIVER") || bName.contains("SWAMP") || bName.contains("BEACH") || bName.contains("WATER")) {
+                                        badArea = true;
+                                        break checkLoop; // Kötü biyom bulundu, direkt diğer alana atla
+                                    }
+                                }
+                            }
+                            
+                            if (badArea) {
+                                loc.add(1000, 0, 1000); // 1000 blok öteye koca bir adaya atıl
                                 biomeAttempts++;
-                            } else {
-                                break;
                             }
                         }
-                        w.setSpawnLocation(loc); // Yeni güzel spawn noktası
-                        player.sendMessage(ChatColor.GREEN + "► Dünya yaratıldı ve Okyanus olmayan bir merkeze (X:" + loc.getBlockX() + " Z:" + loc.getBlockZ() + ") ayarlandı!");
+                        
+                        loc.setY(w.getHighestBlockYAt(loc.getBlockX(), loc.getBlockZ()) + 1);
+                        w.setSpawnLocation(loc); // Yeni susuz spawn noktası
+                        
+                        player.sendMessage(ChatColor.GREEN + "► Dünya yaratıldı ve belirlenen oyun sınırı (" + borderSizeForPreload + ") bölgesi denizden ARINDIRILMIŞ kıtaya taşındı!");
+                        player.sendMessage(ChatColor.GREEN + "► Yeni Oyun Merkezi: (X:" + loc.getBlockX() + " Z:" + loc.getBlockZ() + ")");
                         
                         // Chunky preload
-                        int borderSizeForPreload = pendingBorders.getOrDefault(worldName, 200);
-                        int chunkyRadius = (borderSizeForPreload / 2) + 150; // Border'ın bir tık fazlası (Yarıçap + 150 blok)
+                        int chunkyRadius = checkRadius + 150; // Border'ın bir tık fazlası (Yarıçap + 150 blok)
                         Bukkit.getServer().dispatchCommand(Bukkit.getConsoleSender(), "chunky world " + worldName);
                         Bukkit.getServer().dispatchCommand(Bukkit.getConsoleSender(), "chunky center " + loc.getBlockX() + " " + loc.getBlockZ());
                         Bukkit.getServer().dispatchCommand(Bukkit.getConsoleSender(), "chunky radius " + chunkyRadius);
