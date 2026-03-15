@@ -2,6 +2,7 @@ package tr.com.havasaldirisi;
 
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Block;
@@ -64,7 +65,7 @@ public class FloorIsLavaCommand implements CommandExecutor, TabCompleter, Listen
 
         } else if (args[0].equalsIgnoreCase("baslat")) {
             if (activeGames.containsKey(world.getUID())) {
-                player.sendMessage(ChatColor.RED + "Bulunduğunuz dünyada zaten bir oyun çalışıyor!");
+                player.sendMessage(ChatColor.RED + "Bulunduğunuz dünyada zaten bir oyun çalışıyor veya hazırlık aşamasında!");
                 return true;
             }
 
@@ -82,12 +83,8 @@ public class FloorIsLavaCommand implements CommandExecutor, TabCompleter, Listen
                 }
             }
 
-            LavaGame game = new LavaGame(world, borderSize);
-            game.runTaskTimer(plugin, 0L, 20L); // Her saniye çalıştır (20 tick)
-            activeGames.put(world.getUID(), game);
-            
-            player.sendMessage(ChatColor.GREEN + "Floor is Lava oyunu " + borderSize + " blok sınırla BAŞLADI!");
-            Bukkit.broadcastMessage(ChatColor.RED + "[!] " + ChatColor.LIGHT_PURPLE + world.getName() + ChatColor.GOLD + " dünyasında Zemin Lav oyunu başladı!");
+            activeGames.put(world.getUID(), null); // Hazırlık safhası başlasın
+            startPreparationPhase(player, world, borderSize);
             
             return true;
 
@@ -133,12 +130,114 @@ public class FloorIsLavaCommand implements CommandExecutor, TabCompleter, Listen
         return true;
     }
 
+    private void startPreparationPhase(Player admin, World world, int borderSize) {
+        Collection<? extends Player> players = Bukkit.getOnlinePlayers();
+        int totalPlayers = players.size();
+        Location center = admin.getLocation();
+        double radius = Math.max(5.0, totalPlayers / 1.5); // Çember boyutu otomatik ayarlanır
+        
+        // Sınırları hazırlık aşamasındayken önceden ayarla (admine göre merkezle)
+        world.getWorldBorder().setCenter(center);
+        world.getWorldBorder().setSize(borderSize);
+        world.getWorldBorder().setDamageBuffer(0);
+        
+        int i = 0;
+        for (Player p : players) {
+            double angle = 2 * Math.PI * i / Math.max(1, totalPlayers);
+            double dx = radius * Math.cos(angle);
+            double dz = radius * Math.sin(angle);
+            
+            Location tLoc = center.clone().add(dx, 0, dz);
+            int highestY = world.getHighestBlockYAt(tLoc.getBlockX(), tLoc.getBlockZ());
+            tLoc.setY(highestY + 1); // Blok üstüne ışınla
+            
+            // Oyuncunun yüzünü merkeze döndür
+            tLoc.setDirection(center.toVector().subtract(tLoc.toVector()));
+            
+            p.teleport(tLoc);
+            i++;
+        }
+        
+        BossBar prepBar = Bukkit.createBossBar(ChatColor.YELLOW + "Oyun Hazırlanıyor...", BarColor.BLUE, BarStyle.SOLID);
+        for (Player p : world.getPlayers()) {
+            prepBar.addPlayer(p);
+        }
+
+        new BukkitRunnable() {
+            int time = 60; // 1 Dakikalık hazırlık
+            
+            @Override
+            public void run() {
+                // Eğer döngü esnasında iptal komutu gelmişse temizle
+                if (!activeGames.containsKey(world.getUID())) {
+                    prepBar.removeAll();
+                    this.cancel();
+                    return;
+                }
+
+                if (time == 60) {
+                    Bukkit.broadcastMessage(ChatColor.AQUA + "=================================");
+                    Bukkit.broadcastMessage(ChatColor.GOLD + "      FLOOR IS LAVA BAŞLIYOR!      ");
+                    Bukkit.broadcastMessage(ChatColor.GRAY + "1. İlk 10 dakika maden ve gelişme süresidir (PvP Kapalı).");
+                    Bukkit.broadcastMessage(ChatColor.GRAY + "2. Oyunun 10. dakikasından itibaren PvP herkes için açılır!");
+                    Bukkit.broadcastMessage(ChatColor.GRAY + "3. 20. dakikanın sonunda lavlar en dipten (-64) yükselmeye başlar.");
+                    Bukkit.broadcastMessage(ChatColor.GRAY + "4. Her 30 saniyede bir lav tabakası 1 blok artar.");
+                    Bukkit.broadcastMessage(ChatColor.AQUA + "=================================");
+                } else if (time == 45) {
+                    Bukkit.broadcastMessage(ChatColor.YELLOW + "» Madene inip eşyalar bulmayı ve yükseklerde üs kurmayı unutmayın!");
+                } else if (time == 30) {
+                    Bukkit.broadcastMessage(ChatColor.YELLOW + "» Oyuna başlamak için son 30 saniye!");
+                } else if (time == 10) {
+                    Bukkit.broadcastMessage(ChatColor.RED + "» Son 10 saniye! Hazırlan!");
+                } else if (time <= 5 && time > 0) {
+                    for (Player p : world.getPlayers()) {
+                        p.sendTitle(ChatColor.RED + String.valueOf(time), ChatColor.GOLD + "Oyun Başlıyor", 5, 20, 5);
+                        p.playSound(p.getLocation(), org.bukkit.Sound.BLOCK_NOTE_BLOCK_PLING, 1.0f, 1.0f);
+                    }
+                } else if (time == 0) {
+                    prepBar.removeAll();
+                    for (Player p : world.getPlayers()) {
+                        p.sendTitle(ChatColor.GREEN + "BAŞLADI!", ChatColor.YELLOW + "İyi olan kazansın!", 10, 40, 10);
+                        p.playSound(p.getLocation(), org.bukkit.Sound.ENTITY_ENDER_DRAGON_GROWL, 1.0f, 1.0f);
+                    }
+                    
+                    // Asıl oyunu başlat
+                    LavaGame game = new LavaGame(world, borderSize, center);
+                    game.runTaskTimer(plugin, 0L, 20L); // Saniyede 1 tick güncelle
+                    activeGames.put(world.getUID(), game); // Dummy olan veriyi aslıyla değiştirir
+                    this.cancel();
+                    return;
+                }
+                
+                prepBar.setTitle(ChatColor.YELLOW + "Oyun Hazırlanıyor... Başlamasına: " + ChatColor.RED + time + " s.");
+                prepBar.setProgress(Math.max(0.0, (double) time / 60.0));
+                
+                // Senkronize tut
+                for (Player p : world.getPlayers()) {
+                    if (!prepBar.getPlayers().contains(p)) {
+                        prepBar.addPlayer(p);
+                    }
+                }
+                
+                time--;
+            }
+        }.runTaskTimer(plugin, 0L, 20L);
+    }
+
     @EventHandler
     public void onPlayerPvP(EntityDamageByEntityEvent event) {
         if (event.getEntity() instanceof Player pVictim && event.getDamager() instanceof Player pAttacker) {
             World world = pVictim.getWorld();
             if (activeGames.containsKey(world.getUID())) {
                 LavaGame game = activeGames.get(world.getUID());
+                
+                if (game == null) {
+                    // game objesi null ise oyun hazırlık aşamasındadır
+                    event.setCancelled(true);
+                    pAttacker.sendMessage(ChatColor.RED + "Oyun henüz hazırlık aşamasında, PvP yapılamaz!");
+                    return;
+                }
+                
                 // Belirtilen PVP süresi henüz dolmadıysa hasarı iptal et
                 if (game.timeElapsed < game.pvpStartTime) {
                     event.setCancelled(true);
@@ -172,6 +271,7 @@ public class FloorIsLavaCommand implements CommandExecutor, TabCompleter, Listen
     private class LavaGame extends BukkitRunnable {
         private final World world;
         private final int borderSize;
+        private final Location center;
         private final BossBar bossBar;
         
         // --- Oyun Ayarları ---
@@ -180,21 +280,22 @@ public class FloorIsLavaCommand implements CommandExecutor, TabCompleter, Listen
         private final int heightIncrease = 1;         // Her yükselişte 1 blok
         private final int heightDelay = 30;           // Kaç saniyede bir yükselecek (30sn)
         private final int gracePeriod = 1200;         // 20 dakika boyunca lavlar yükselmez (Saniye = 20 * 60)
-        public final int pvpStartTime = 1800;         // 30 dakika sonra PvP serbest (Saniye = 30 * 60)
+        public final int pvpStartTime = 600;          // 10 dakika sonra PvP serbest (Saniye = 10 * 60)
         private final Material risingBlock = Material.LAVA;
 
         public int currentY;
         public int timeElapsed = 0; // Geçen toplam saniye
 
-        public LavaGame(World world, int borderSize) {
+        public LavaGame(World world, int borderSize, Location center) {
             this.world = world;
             this.borderSize = borderSize;
+            this.center = center;
             this.currentY = startingHeight;
 
             this.bossBar = Bukkit.createBossBar("Floor Is Lava Hazırlanıyor...", BarColor.PURPLE, BarStyle.SOLID);
 
-            // Sınır ve merkez ayarla (Bordersize, 0,0 merkezine göre)
-            world.getWorldBorder().setCenter(0.0, 0.0);
+            // Sınır ve merkez ayarla
+            world.getWorldBorder().setCenter(center);
             world.getWorldBorder().setSize(borderSize);
             world.getWorldBorder().setDamageBuffer(0); // Dışarı çıkanı direkt zehirler
         }
@@ -261,11 +362,14 @@ public class FloorIsLavaCommand implements CommandExecutor, TabCompleter, Listen
 
         private void fillLavaLayer(int y) {
             int radius = borderSize / 2;
+            int cx = center.getBlockX();
+            int cz = center.getBlockZ();
+            
             // OYUN İÇİNDE LAG OLMAMASI ADINA:
             // Sadece Y sınırının altındaki boş bloklar veya sıvıları lav ile değiştirir. 
             // setType(Lava, false) fiziksel blok update'lerini kapatır ve çok hızlı yerleştirir.
-            for (int x = -radius; x <= radius; x++) {
-                for (int z = -radius; z <= radius; z++) {
+            for (int x = cx - radius; x <= cx + radius; x++) {
+                for (int z = cz - radius; z <= cz + radius; z++) {
                     Block block = world.getBlockAt(x, y, z);
                     Material t = block.getType();
                     if (t.isAir() || t == Material.WATER || t == Material.SEAGRASS || t == Material.TALL_SEAGRASS || t == Material.KELP || t == Material.KELP_PLANT || t == Material.SNOW || t == Material.FERN || t == Material.GRASS || t == Material.TALL_GRASS) {
