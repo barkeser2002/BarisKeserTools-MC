@@ -283,7 +283,8 @@ public class FloorIsLavaCommand implements CommandExecutor, TabCompleter, Listen
         List<Player> targetPlayers = new ArrayList<>();
         for (UUID uuid : participants) {
             Player p = Bukkit.getPlayer(uuid);
-            if (p != null && p.isOnline()) {
+            // Sadece yetkisi OLMAYAN oyuncuları oyuna dahil et (Yöneticiler vs katılamaz/oyuncu sayılmaz)
+            if (p != null && p.isOnline() && !p.hasPermission("bariskesertools.etkinlik")) {
                 targetPlayers.add(p);
             }
         }
@@ -340,7 +341,7 @@ public class FloorIsLavaCommand implements CommandExecutor, TabCompleter, Listen
                         p.sendMessage(ChatColor.GRAY + "1. İlk " + pvpSuresiDk + " dakika maden ve gelişme süresidir (PvP Kapalı).");
                         p.sendMessage(ChatColor.GRAY + "2. Oyunun " + pvpSuresiDk + ". dakikasından itibaren PvP herkes için açılır!");
                         p.sendMessage(ChatColor.GRAY + "3. " + lavSuresiDk + ". dakikanın sonunda lavlar en dipten (-64) yükselmeye başlar.");
-                        p.sendMessage(ChatColor.GRAY + "4. Her 30 saniyede bir lav tabakası 1 blok artar.");
+                        p.sendMessage(ChatColor.GRAY + "4. Her 5 saniyede bir lav tabakası 1 blok artar.");
                         p.sendMessage(ChatColor.AQUA + "=================================");
                     }
                 } else if (time == 45) {
@@ -425,6 +426,11 @@ public class FloorIsLavaCommand implements CommandExecutor, TabCompleter, Listen
                     // Ölüm ekranı çıkarmadan anında o noktada spectatör yap
                     p.setGameMode(GameMode.SPECTATOR);
                     p.sendMessage(ChatColor.RED + "Öldünüz ve elendiniz! Artık oyunu bulunduğunuz noktadan izleyici modunda seyredebilirsiniz.");
+                    
+                    // Dünyadaki herkese duyur
+                    for (Player wp : world.getPlayers()) {
+                        wp.sendMessage(ChatColor.DARK_RED + "☠ " + ChatColor.YELLOW + p.getName() + ChatColor.RED + " elendi!");
+                    }
                 }
             }
         }
@@ -515,7 +521,7 @@ public class FloorIsLavaCommand implements CommandExecutor, TabCompleter, Listen
         // (Şablondaki ayarlara uyum sağlandı)
         private final int startingHeight = -64;
         private final int heightIncrease = 1;         // Her yükselişte 1 blok
-        private final int heightDelay = 30;           // Kaç saniyede bir yükselecek (30sn)
+        private final int heightDelay = 5;            // Kaç saniyede bir yükselecek (5sn)
         private final int gracePeriod;                // Lavlar yükselmeye başlamadan önceki bekleme süresi
         public final int pvpStartTime;                // PvP ne zaman açılacak
         private final Material risingBlock = Material.LAVA;
@@ -545,11 +551,19 @@ public class FloorIsLavaCommand implements CommandExecutor, TabCompleter, Listen
 
             // BossBar'ı dünyadaki oyuncularla senkronize tut
             updateBossBarPlayers();
+            
+            // Etkinlikteki güncel oyuncu sayısını hesapla
+            int remainingPlayers = 0;
+            for (Player p : world.getPlayers()) {
+                if (p.getGameMode() != GameMode.SPECTATOR && !p.hasPermission("bariskesertools.etkinlik")) {
+                    remainingPlayers++;
+                }
+            }
 
             if (timeElapsed <= gracePeriod) {
                 // Safhalar: Sadece Gelişme - Lav yükselmeyecek
                 int remaining = gracePeriod - timeElapsed;
-                bossBar.setTitle(ChatColor.GOLD + "Lavın Başlamasına: " + ChatColor.YELLOW + formatTime(remaining) + ChatColor.DARK_GRAY + " | " + ChatColor.GREEN + "Gelişim Sırası");
+                bossBar.setTitle(ChatColor.AQUA + "Kalan: " + ChatColor.WHITE + remainingPlayers + ChatColor.DARK_GRAY + " | " + ChatColor.GOLD + "Lav: " + ChatColor.YELLOW + formatTime(remaining) + ChatColor.DARK_GRAY + " | " + ChatColor.GREEN + "Gelişim Sırası");
                 bossBar.setProgress(Math.max(0.0, (double) remaining / gracePeriod));
             } else {
                 // Lavların yükselme aşaması başladı
@@ -565,21 +579,25 @@ public class FloorIsLavaCommand implements CommandExecutor, TabCompleter, Listen
                 String pvpStatus;
                 if (timeElapsed < pvpStartTime) {
                     int pvpLeft = pvpStartTime - timeElapsed;
-                    pvpStatus = ChatColor.RED + "PvP'ye Kalan: " + ChatColor.YELLOW + formatTime(pvpLeft);
+                    pvpStatus = ChatColor.RED + "PvP: " + ChatColor.YELLOW + formatTime(pvpLeft);
                     bossBar.setColor(BarColor.RED);
                 } else {
                     pvpStatus = ChatColor.DARK_RED + "" + ChatColor.BOLD + "PVP AKTİF!";
                     bossBar.setColor(BarColor.GREEN);
                 }
                 
-                bossBar.setTitle(ChatColor.GOLD + "Lav Seviyesi: " + ChatColor.RED + "Y=" + currentY + ChatColor.DARK_GRAY + " | " + pvpStatus);
+                bossBar.setTitle(ChatColor.AQUA + "Kalan: " + ChatColor.WHITE + remainingPlayers + ChatColor.DARK_GRAY + " | " + ChatColor.GOLD + "Lav Seviyesi: " + ChatColor.RED + "Y=" + currentY + ChatColor.DARK_GRAY + " | " + pvpStatus);
                 bossBar.setProgress(1.0);
             }
 
             // Minecraft genelde Max Height 320'dir
-            if (currentY > 320) {
-                bossBar.setTitle(ChatColor.DARK_RED + "" + ChatColor.BOLD + "OYUN BİTTİ! EKRANINIZ KOMPLE LAV!");
-                bossBar.setColor(BarColor.RED);
+            if (currentY > 320 || remainingPlayers <= 1) {
+                if (remainingPlayers == 1) {
+                    bossBar.setTitle(ChatColor.DARK_GREEN + "" + ChatColor.BOLD + "OYUN BİTTİ! BİR KAZANAN VAR!");
+                } else {
+                    bossBar.setTitle(ChatColor.DARK_RED + "" + ChatColor.BOLD + "OYUN BİTTİ! (Lav tavan yaptı veya kimse kalmadı)");
+                }
+                bossBar.setColor(BarColor.BLUE);
                 this.cancel();
             }
         }
