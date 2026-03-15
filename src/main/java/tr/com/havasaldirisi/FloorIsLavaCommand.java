@@ -19,6 +19,8 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.GameMode;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -28,7 +30,7 @@ public class FloorIsLavaCommand implements CommandExecutor, TabCompleter, Listen
 
     private final JavaPlugin plugin;
     private final Map<UUID, LavaGame> activeGames = new HashMap<>();
-    private final Map<UUID, Location> pendingSpectators = new HashMap<>();
+    private final Map<String, Integer> pendingBorders = new HashMap<>();
 
     public FloorIsLavaCommand(JavaPlugin plugin) {
         this.plugin = plugin;
@@ -55,13 +57,56 @@ public class FloorIsLavaCommand implements CommandExecutor, TabCompleter, Listen
 
         if (args[0].equalsIgnoreCase("kur")) {
             if (args.length < 2) {
-                player.sendMessage(ChatColor.RED + "Kullanım: /lavaisfloor kur <dünya_adi>");
+                player.sendMessage(ChatColor.RED + "Kullanım: /lavaisfloor kur <dünya_adi> [maxborder]");
                 return true;
             }
             String worldName = args[1];
-            player.sendMessage(ChatColor.GREEN + "Multiverse-Core ile '" + worldName + "' dünyası oluşturuluyor (normal)...");
+            
+            if (args.length > 2) {
+                try {
+                    int border = Integer.parseInt(args[2]);
+                    pendingBorders.put(worldName, border);
+                } catch (NumberFormatException e) {
+                    player.sendMessage(ChatColor.RED + "Border boyutu geçersiz, varsayılan (200) kullanılacak.");
+                }
+            }
+
+            player.sendMessage(ChatColor.GREEN + "Multiverse-Core ile '" + worldName + "' dünyası oluşturuluyor. Okyanus olmayan bir bölge aranacak...");
             Bukkit.getServer().dispatchCommand(Bukkit.getConsoleSender(), "mv create " + worldName + " normal");
-            player.sendMessage(ChatColor.YELLOW + "Dünya yaratıldığında oraya gitmek için: /mv tp " + worldName);
+            
+            new BukkitRunnable() {
+                int attempts = 0;
+                @Override
+                public void run() {
+                    World w = Bukkit.getWorld(worldName);
+                    if (w != null) {
+                        Location loc = w.getSpawnLocation();
+                        int biomeAttempts = 0;
+                        
+                        // Okyanus veya Nehir olmayan bir biyom bulana kadar spawn noktasını kaydır
+                        while (biomeAttempts < 150) {
+                            String biomeName = w.getBiome(loc.getBlockX(), loc.getBlockY(), loc.getBlockZ()).name();
+                            if (biomeName.contains("OCEAN") || biomeName.contains("RIVER") || biomeName.contains("SWAMP")) {
+                                loc.add(500, 0, 500);
+                                loc.setY(w.getHighestBlockYAt(loc.getBlockX(), loc.getBlockZ()));
+                                biomeAttempts++;
+                            } else {
+                                break;
+                            }
+                        }
+                        w.setSpawnLocation(loc); // Yeni güzel spawn noktası
+                        player.sendMessage(ChatColor.GREEN + "► Dünya yaratıldı ve Okyanus olmayan bir merkeze (X:" + loc.getBlockX() + " Z:" + loc.getBlockZ() + ") ayarlandı!");
+                        player.sendMessage(ChatColor.YELLOW + "► Oraya gitmek için: /mv tp " + worldName);
+                        this.cancel();
+                    }
+                    
+                    if (attempts++ > 100) { // 100 saniye bekledi hala yoksa pes et
+                        player.sendMessage(ChatColor.RED + "Dünya yaratılma süresi çok uzadı, otomatik biyom düzeltmesi pas geçildi.");
+                        this.cancel();
+                    }
+                }
+            }.runTaskTimer(plugin, 40L, 20L); // 2 sn sonra başla, saniyede bir dünyayı kontrol et
+            
             return true;
 
         } else if (args[0].equalsIgnoreCase("baslat")) {
@@ -70,7 +115,10 @@ public class FloorIsLavaCommand implements CommandExecutor, TabCompleter, Listen
                 return true;
             }
 
-            int borderSize = 200; // Varsayılan boyut
+            // Kurulurken girilen bordersize'ı kontrol et
+            int borderSize = pendingBorders.getOrDefault(world.getName(), 200);
+            
+            // Eğer özellikle argüman verilmişse onu ezer
             if (args.length > 1) {
                 try {
                     borderSize = Integer.parseInt(args[1]);
@@ -226,43 +274,48 @@ public class FloorIsLavaCommand implements CommandExecutor, TabCompleter, Listen
     }
 
     @EventHandler
-    public void onPlayerDeath(org.bukkit.event.entity.PlayerDeathEvent event) {
-        Player p = event.getEntity();
-        World world = p.getWorld();
-        if (activeGames.containsKey(world.getUID())) {
-            LavaGame game = activeGames.get(world.getUID());
-            Location respawnLoc;
-            if (game != null) {
-                // Aktif oyun sırasında ölürlerse:
-                respawnLoc = game.center.clone();
-                // Lav yüksekliğinden en az 20 blok veya 100 y seviyesinde doğsun
-                respawnLoc.setY(Math.max(game.currentY + 20, 100));
-            } else {
-                // Hazırlık aşamasında ölürlerse (olası değil ama garantileyelim)
-                respawnLoc = world.getSpawnLocation();
-                respawnLoc.setY(world.getHighestBlockYAt(respawnLoc.getBlockX(), respawnLoc.getBlockZ()) + 10);
-            }
-            pendingSpectators.put(p.getUniqueId(), respawnLoc);
-        }
-    }
-
-    @EventHandler
-    public void onPlayerRespawn(org.bukkit.event.player.PlayerRespawnEvent event) {
-        Player p = event.getPlayer();
-        if (pendingSpectators.containsKey(p.getUniqueId())) {
-            Location loc = pendingSpectators.remove(p.getUniqueId());
-            event.setRespawnLocation(loc); // Kendi dünyasında oyunu izleyeceği yere ışınla
-            
-            // Seyirci modunu küçük bir gecikmeyle veriyoruz ki spigot respawn sırasında iptal etmesin
-            new BukkitRunnable() {
-                @Override
-                public void run() {
-                    if (p.isOnline()) {
-                        p.setGameMode(org.bukkit.GameMode.SPECTATOR);
-                        p.sendMessage(ChatColor.RED + "Öldünüz ve elendiniz! Artık oyunu izleyici modunda seyredebilirsiniz.");
+    public void onPlayerDamage(org.bukkit.event.entity.EntityDamageEvent event) {
+        if (event.getEntity() instanceof Player p) {
+            World world = p.getWorld();
+            if (activeGames.containsKey(world.getUID())) {
+                LavaGame game = activeGames.get(world.getUID());
+                if (game != null && (p.getHealth() - event.getFinalDamage() <= 0)) {
+                    // Gerçek ölümü engelle
+                    event.setCancelled(true);
+                    
+                    // Sahte ölüm için eşyalarını etrafa saç
+                    for (ItemStack item : p.getInventory().getContents()) {
+                        if (item != null && item.getType() != Material.AIR) {
+                            world.dropItemNaturally(p.getLocation(), item);
+                        }
                     }
+                    p.getInventory().clear();
+                    
+                    // Üzerindeki zırhları da düşür
+                    for (ItemStack armor : p.getInventory().getArmorContents()) {
+                        if (armor != null && armor.getType() != Material.AIR) {
+                            world.dropItemNaturally(p.getLocation(), armor);
+                        }
+                    }
+                    p.getInventory().setArmorContents(null);
+                    
+                    // Oyuncunun durumunu sıfırla (Can, yemek, yanma vb.)
+                    p.setHealth(20.0);
+                    p.setFoodLevel(20);
+                    p.setFireTicks(0);
+                    p.setFallDistance(0);
+                    for (org.bukkit.potion.PotionEffect effect : p.getActivePotionEffects()) {
+                        p.removePotionEffect(effect.getType());
+                    }
+                    
+                    // Ölüm sesi
+                    world.playSound(p.getLocation(), org.bukkit.Sound.ENTITY_PLAYER_DEATH, 1.0f, 1.0f);
+                    
+                    // Ölüm ekranı çıkarmadan anında o noktada spectatör yap
+                    p.setGameMode(GameMode.SPECTATOR);
+                    p.sendMessage(ChatColor.RED + "Öldünüz ve elendiniz! Artık oyunu bulunduğunuz noktadan izleyici modunda seyredebilirsiniz.");
                 }
-            }.runTaskLater(plugin, 2L);
+            }
         }
     }
 
