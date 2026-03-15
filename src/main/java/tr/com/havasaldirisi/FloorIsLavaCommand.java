@@ -50,6 +50,7 @@ public class FloorIsLavaCommand implements CommandExecutor, TabCompleter, Listen
 
         if (args.length == 0) {
             player.sendMessage(ChatColor.RED + "Kullanım: /lavaisfloor <kur|baslat|iptal|sil> [parametreler]");
+            player.sendMessage(ChatColor.GRAY + "→ /lavaisfloor baslat [border] [lav_suresi_dk] [pvp_suresi_dk]");
             return true;
         }
 
@@ -127,6 +128,8 @@ public class FloorIsLavaCommand implements CommandExecutor, TabCompleter, Listen
 
             // Kurulurken girilen bordersize'ı kontrol et
             int borderSize = pendingBorders.getOrDefault(world.getName(), 200);
+            int lavSuresiDk = 20;
+            int pvpSuresiDk = 10;
             
             // Eğer özellikle argüman verilmişse onu ezer
             if (args.length > 1) {
@@ -141,9 +144,25 @@ public class FloorIsLavaCommand implements CommandExecutor, TabCompleter, Listen
                     return true;
                 }
             }
+            if (args.length > 2) {
+                try {
+                    lavSuresiDk = Integer.parseInt(args[2]);
+                } catch (NumberFormatException e) {
+                    player.sendMessage(ChatColor.RED + "Lütfen geçerli bir lav süresi (dakika) girin.");
+                    return true;
+                }
+            }
+            if (args.length > 3) {
+                try {
+                    pvpSuresiDk = Integer.parseInt(args[3]);
+                } catch (NumberFormatException e) {
+                    player.sendMessage(ChatColor.RED + "Lütfen geçerli bir pvp süresi (dakika) girin.");
+                    return true;
+                }
+            }
 
             activeGames.put(world.getUID(), null); // Hazırlık safhası başlasın
-            startPreparationPhase(player, world, borderSize);
+            startPreparationPhase(player, world, borderSize, lavSuresiDk, pvpSuresiDk);
             
             return true;
 
@@ -189,7 +208,7 @@ public class FloorIsLavaCommand implements CommandExecutor, TabCompleter, Listen
         return true;
     }
 
-    private void startPreparationPhase(Player admin, World world, int borderSize) {
+    private void startPreparationPhase(Player admin, World world, int borderSize, int lavSuresiDk, int pvpSuresiDk) {
         Collection<? extends Player> players = Bukkit.getOnlinePlayers();
         int totalPlayers = players.size();
         Location center = admin.getLocation();
@@ -237,9 +256,9 @@ public class FloorIsLavaCommand implements CommandExecutor, TabCompleter, Listen
                 if (time == 60) {
                     Bukkit.broadcastMessage(ChatColor.AQUA + "=================================");
                     Bukkit.broadcastMessage(ChatColor.GOLD + "      FLOOR IS LAVA BAŞLIYOR!      ");
-                    Bukkit.broadcastMessage(ChatColor.GRAY + "1. İlk 10 dakika maden ve gelişme süresidir (PvP Kapalı).");
-                    Bukkit.broadcastMessage(ChatColor.GRAY + "2. Oyunun 10. dakikasından itibaren PvP herkes için açılır!");
-                    Bukkit.broadcastMessage(ChatColor.GRAY + "3. 20. dakikanın sonunda lavlar en dipten (-64) yükselmeye başlar.");
+                    Bukkit.broadcastMessage(ChatColor.GRAY + "1. İlk " + pvpSuresiDk + " dakika maden ve gelişme süresidir (PvP Kapalı).");
+                    Bukkit.broadcastMessage(ChatColor.GRAY + "2. Oyunun " + pvpSuresiDk + ". dakikasından itibaren PvP herkes için açılır!");
+                    Bukkit.broadcastMessage(ChatColor.GRAY + "3. " + lavSuresiDk + ". dakikanın sonunda lavlar en dipten (-64) yükselmeye başlar.");
                     Bukkit.broadcastMessage(ChatColor.GRAY + "4. Her 30 saniyede bir lav tabakası 1 blok artar.");
                     Bukkit.broadcastMessage(ChatColor.AQUA + "=================================");
                 } else if (time == 45) {
@@ -261,7 +280,7 @@ public class FloorIsLavaCommand implements CommandExecutor, TabCompleter, Listen
                     }
                     
                     // Asıl oyunu başlat
-                    LavaGame game = new LavaGame(world, borderSize, center);
+                    LavaGame game = new LavaGame(world, borderSize, center, lavSuresiDk, pvpSuresiDk);
                     game.runTaskTimer(plugin, 0L, 20L); // Saniyede 1 tick güncelle
                     activeGames.put(world.getUID(), game); // Dummy olan veriyi aslıyla değiştirir
                     this.cancel();
@@ -369,6 +388,16 @@ public class FloorIsLavaCommand implements CommandExecutor, TabCompleter, Listen
             } else if (args[0].equalsIgnoreCase("kur") || args[0].equalsIgnoreCase("sil")) {
                 return Arrays.asList("LavaDunyasi", "Oyun1", "Arena1");
             }
+        } else if (args.length == 3) {
+            if (args[0].equalsIgnoreCase("baslat")) {
+                // Lav Suresi (dk)
+                return Arrays.asList("10", "20", "30", "40");
+            }
+        } else if (args.length == 4) {
+            if (args[0].equalsIgnoreCase("baslat")) {
+                // PvP Suresi (dk)
+                return Arrays.asList("5", "10", "15", "20");
+            }
         }
         return new ArrayList<>();
     }
@@ -384,18 +413,20 @@ public class FloorIsLavaCommand implements CommandExecutor, TabCompleter, Listen
         private final int startingHeight = -64;
         private final int heightIncrease = 1;         // Her yükselişte 1 blok
         private final int heightDelay = 30;           // Kaç saniyede bir yükselecek (30sn)
-        private final int gracePeriod = 1200;         // 20 dakika boyunca lavlar yükselmez (Saniye = 20 * 60)
-        public final int pvpStartTime = 600;          // 10 dakika sonra PvP serbest (Saniye = 10 * 60)
+        private final int gracePeriod;                // Lavlar yükselmeye başlamadan önceki bekleme süresi
+        public final int pvpStartTime;                // PvP ne zaman açılacak
         private final Material risingBlock = Material.LAVA;
 
         public int currentY;
         public int timeElapsed = 0; // Geçen toplam saniye
 
-        public LavaGame(World world, int borderSize, Location center) {
+        public LavaGame(World world, int borderSize, Location center, int lavSuresiDk, int pvpSuresiDk) {
             this.world = world;
             this.borderSize = borderSize;
             this.center = center;
             this.currentY = startingHeight;
+            this.gracePeriod = lavSuresiDk * 60;
+            this.pvpStartTime = pvpSuresiDk * 60;
 
             this.bossBar = Bukkit.createBossBar("Floor Is Lava Hazırlanıyor...", BarColor.PURPLE, BarStyle.SOLID);
 
