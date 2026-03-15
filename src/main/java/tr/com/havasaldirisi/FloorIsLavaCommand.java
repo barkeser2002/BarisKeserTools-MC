@@ -31,6 +31,11 @@ public class FloorIsLavaCommand implements CommandExecutor, TabCompleter, Listen
     private final JavaPlugin plugin;
     private final Map<UUID, LavaGame> activeGames = new HashMap<>();
     private final Map<String, Integer> pendingBorders = new HashMap<>();
+    
+    // --- Etkinlik Toplanma Durumu ---
+    public boolean isGathering = false;
+    public final Set<UUID> participants = new HashSet<>();
+    public BossBar gatheringBar = null;
 
     public FloorIsLavaCommand(JavaPlugin plugin) {
         this.plugin = plugin;
@@ -43,13 +48,32 @@ public class FloorIsLavaCommand implements CommandExecutor, TabCompleter, Listen
             return true;
         }
 
+        if (command.getName().equalsIgnoreCase("etkinligekatil")) {
+            if (!isGathering) {
+                player.sendMessage(ChatColor.RED + "Şu anda toplanan veya oyuncu bekleyen bir etkinlik yok!");
+                return true;
+            }
+            if (participants.contains(player.getUniqueId())) {
+                player.sendMessage(ChatColor.YELLOW + "Etkinliğe zaten katıldınız, bekleyiniz!");
+                return true;
+            }
+            participants.add(player.getUniqueId());
+            if (gatheringBar != null) {
+                gatheringBar.addPlayer(player);
+                gatheringBar.setTitle(ChatColor.GOLD + "Etkinlik Bekleniyor - Katılımcı: " + ChatColor.GREEN + participants.size());
+            }
+            player.sendMessage(ChatColor.GREEN + "Etkinliğe başarıyla katıldınız! Lütfen oyun başlayana kadar bekleyiniz.");
+            return true;
+        }
+
         if (!player.hasPermission("bariskesertools.admin") && !player.isOp()) {
             player.sendMessage(ChatColor.RED + "Bunun için yetkiniz yok.");
             return true;
         }
 
         if (args.length == 0) {
-            player.sendMessage(ChatColor.RED + "Kullanım: /lavaisfloor <kur|baslat|iptal|sil> [parametreler]");
+            player.sendMessage(ChatColor.RED + "Kullanım: /lavaisfloor <kur|topla|baslat|iptal|sil> [parametreler]");
+            player.sendMessage(ChatColor.GRAY + "→ /lavaisfloor topla (Sunucuda katılımı açar)");
             player.sendMessage(ChatColor.GRAY + "→ /lavaisfloor baslat [border] [lav_suresi_dk] [pvp_suresi_dk]");
             return true;
         }
@@ -141,9 +165,29 @@ public class FloorIsLavaCommand implements CommandExecutor, TabCompleter, Listen
             
             return true;
 
+        } else if (args[0].equalsIgnoreCase("topla")) {
+            isGathering = true;
+            participants.clear();
+            if (gatheringBar != null) {
+                gatheringBar.removeAll();
+            }
+            gatheringBar = Bukkit.createBossBar(ChatColor.GOLD + "Etkinlik Bekleniyor - Katılımcı: " + ChatColor.GREEN + "0", BarColor.GREEN, BarStyle.SOLID);
+            
+            Bukkit.broadcastMessage(ChatColor.GREEN + "=================================================");
+            Bukkit.broadcastMessage(ChatColor.GOLD + "   YENİ BİR FLOOR IS LAVA ETKİNLİĞİ BAŞLIYOR!   ");
+            Bukkit.broadcastMessage(ChatColor.YELLOW + " 1. Oyuna katılmak ve ışınlanmak için komut: " + ChatColor.AQUA + "/etkinligekatil");
+            Bukkit.broadcastMessage(ChatColor.YELLOW + " 2. Envanteriniz boş ve hazır olunuz!");
+            Bukkit.broadcastMessage(ChatColor.GREEN + "=================================================");
+            
+            return true;
+
         } else if (args[0].equalsIgnoreCase("baslat")) {
             if (activeGames.containsKey(world.getUID())) {
                 player.sendMessage(ChatColor.RED + "Bulunduğunuz dünyada zaten bir oyun çalışıyor veya hazırlık aşamasında!");
+                return true;
+            }
+            if (participants.isEmpty()) {
+                player.sendMessage(ChatColor.RED + "Hiç kimse katılmadığı için oyunu başlatamazsın! Önce /lavaisfloor topla ile insanları çağır!");
                 return true;
             }
 
@@ -180,6 +224,12 @@ public class FloorIsLavaCommand implements CommandExecutor, TabCompleter, Listen
                     player.sendMessage(ChatColor.RED + "Lütfen geçerli bir pvp süresi (dakika) girin.");
                     return true;
                 }
+            }
+            
+            // Toplama aşamasını bitir
+            isGathering = false;
+            if (gatheringBar != null) {
+                gatheringBar.removeAll();
             }
 
             activeGames.put(world.getUID(), null); // Hazırlık safhası başlasın
@@ -225,13 +275,22 @@ public class FloorIsLavaCommand implements CommandExecutor, TabCompleter, Listen
             return true;
         }
 
-        player.sendMessage(ChatColor.RED + "Bilinmeyen alt komut. Komutlar: kur, baslat, iptal, sil");
+        player.sendMessage(ChatColor.RED + "Bilinmeyen alt komut. Komutlar: kur, topla, baslat, iptal, sil");
         return true;
     }
 
     private void startPreparationPhase(Player admin, World world, int borderSize, int lavSuresiDk, int pvpSuresiDk) {
-        Collection<? extends Player> players = Bukkit.getOnlinePlayers();
-        int totalPlayers = players.size();
+        List<Player> targetPlayers = new ArrayList<>();
+        for (UUID uuid : participants) {
+            Player p = Bukkit.getPlayer(uuid);
+            if (p != null && p.isOnline()) {
+                targetPlayers.add(p);
+            }
+        }
+        
+        int totalPlayers = targetPlayers.size();
+        if (totalPlayers == 0) totalPlayers = 1; // Hata almamak için minimum 1 yap
+        
         Location center = admin.getLocation();
         double radius = Math.max(5.0, totalPlayers / 1.5); // Çember boyutu otomatik ayarlanır
         
@@ -241,8 +300,8 @@ public class FloorIsLavaCommand implements CommandExecutor, TabCompleter, Listen
         world.getWorldBorder().setDamageBuffer(0);
         
         int i = 0;
-        for (Player p : players) {
-            double angle = 2 * Math.PI * i / Math.max(1, totalPlayers);
+        for (Player p : targetPlayers) {
+            double angle = 2 * Math.PI * i / totalPlayers;
             double dx = radius * Math.cos(angle);
             double dz = radius * Math.sin(angle);
             
@@ -258,7 +317,7 @@ public class FloorIsLavaCommand implements CommandExecutor, TabCompleter, Listen
         }
         
         BossBar prepBar = Bukkit.createBossBar(ChatColor.YELLOW + "Oyun Hazırlanıyor...", BarColor.BLUE, BarStyle.SOLID);
-        for (Player p : world.getPlayers()) {
+        for (Player p : targetPlayers) {
             prepBar.addPlayer(p);
         }
 
@@ -275,27 +334,29 @@ public class FloorIsLavaCommand implements CommandExecutor, TabCompleter, Listen
                 }
 
                 if (time == 60) {
-                    Bukkit.broadcastMessage(ChatColor.AQUA + "=================================");
-                    Bukkit.broadcastMessage(ChatColor.GOLD + "      FLOOR IS LAVA BAŞLIYOR!      ");
-                    Bukkit.broadcastMessage(ChatColor.GRAY + "1. İlk " + pvpSuresiDk + " dakika maden ve gelişme süresidir (PvP Kapalı).");
-                    Bukkit.broadcastMessage(ChatColor.GRAY + "2. Oyunun " + pvpSuresiDk + ". dakikasından itibaren PvP herkes için açılır!");
-                    Bukkit.broadcastMessage(ChatColor.GRAY + "3. " + lavSuresiDk + ". dakikanın sonunda lavlar en dipten (-64) yükselmeye başlar.");
-                    Bukkit.broadcastMessage(ChatColor.GRAY + "4. Her 30 saniyede bir lav tabakası 1 blok artar.");
-                    Bukkit.broadcastMessage(ChatColor.AQUA + "=================================");
+                    for (Player p : targetPlayers) {
+                        p.sendMessage(ChatColor.AQUA + "=================================");
+                        p.sendMessage(ChatColor.GOLD + "      FLOOR IS LAVA BAŞLIYOR!      ");
+                        p.sendMessage(ChatColor.GRAY + "1. İlk " + pvpSuresiDk + " dakika maden ve gelişme süresidir (PvP Kapalı).");
+                        p.sendMessage(ChatColor.GRAY + "2. Oyunun " + pvpSuresiDk + ". dakikasından itibaren PvP herkes için açılır!");
+                        p.sendMessage(ChatColor.GRAY + "3. " + lavSuresiDk + ". dakikanın sonunda lavlar en dipten (-64) yükselmeye başlar.");
+                        p.sendMessage(ChatColor.GRAY + "4. Her 30 saniyede bir lav tabakası 1 blok artar.");
+                        p.sendMessage(ChatColor.AQUA + "=================================");
+                    }
                 } else if (time == 45) {
-                    Bukkit.broadcastMessage(ChatColor.YELLOW + "» Madene inip eşyalar bulmayı ve yükseklerde üs kurmayı unutmayın!");
+                    for (Player p : targetPlayers) p.sendMessage(ChatColor.YELLOW + "» Madene inip eşyalar bulmayı ve yükseklerde üs kurmayı unutmayın!");
                 } else if (time == 30) {
-                    Bukkit.broadcastMessage(ChatColor.YELLOW + "» Oyuna başlamak için son 30 saniye!");
+                    for (Player p : targetPlayers) p.sendMessage(ChatColor.YELLOW + "» Oyuna başlamak için son 30 saniye!");
                 } else if (time == 10) {
-                    Bukkit.broadcastMessage(ChatColor.RED + "» Son 10 saniye! Hazırlan!");
+                    for (Player p : targetPlayers) p.sendMessage(ChatColor.RED + "» Son 10 saniye! Hazırlan!");
                 } else if (time <= 5 && time > 0) {
-                    for (Player p : world.getPlayers()) {
+                    for (Player p : targetPlayers) {
                         p.sendTitle(ChatColor.RED + String.valueOf(time), ChatColor.GOLD + "Oyun Başlıyor", 5, 20, 5);
                         p.playSound(p.getLocation(), org.bukkit.Sound.BLOCK_NOTE_BLOCK_PLING, 1.0f, 1.0f);
                     }
                 } else if (time == 0) {
                     prepBar.removeAll();
-                    for (Player p : world.getPlayers()) {
+                    for (Player p : targetPlayers) {
                         p.sendTitle(ChatColor.GREEN + "BAŞLADI!", ChatColor.YELLOW + "İyi olan kazansın!", 10, 40, 10);
                         p.playSound(p.getLocation(), org.bukkit.Sound.ENTITY_ENDER_DRAGON_GROWL, 1.0f, 1.0f);
                     }
@@ -312,7 +373,7 @@ public class FloorIsLavaCommand implements CommandExecutor, TabCompleter, Listen
                 prepBar.setProgress(Math.max(0.0, (double) time / 60.0));
                 
                 // Senkronize tut
-                for (Player p : world.getPlayers()) {
+                for (Player p : targetPlayers) {
                     if (!prepBar.getPlayers().contains(p)) {
                         prepBar.addPlayer(p);
                     }
@@ -365,6 +426,27 @@ public class FloorIsLavaCommand implements CommandExecutor, TabCompleter, Listen
                     p.setGameMode(GameMode.SPECTATOR);
                     p.sendMessage(ChatColor.RED + "Öldünüz ve elendiniz! Artık oyunu bulunduğunuz noktadan izleyici modunda seyredebilirsiniz.");
                 }
+            }
+        }
+    }
+
+    @EventHandler
+    public void onPlayerMove(org.bukkit.event.player.PlayerMoveEvent event) {
+        Location to = event.getTo();
+        if (to == null) return;
+        
+        Player p = event.getPlayer();
+        World world = p.getWorld();
+        
+        // Eğer o dünyada oyun var ve henüz hazırlık aşamasındaysa (aktif oyun nesnesi null ise)
+        if (activeGames.containsKey(world.getUID()) && activeGames.get(world.getUID()) == null) {
+            Location from = event.getFrom();
+            // Oyuncunun sadece bakış açısını (pitch/yaw) değiştirmesine izin ver, koordinat hareketini iptal et
+            if (from.getX() != to.getX() || from.getZ() != to.getZ() || from.getY() < to.getY()) {
+                Location fixLoc = from.clone();
+                fixLoc.setPitch(to.getPitch());
+                fixLoc.setYaw(to.getYaw());
+                event.setTo(fixLoc);
             }
         }
     }

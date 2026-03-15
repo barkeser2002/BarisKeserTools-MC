@@ -95,6 +95,9 @@ public class HavaSaldirisiPlugin extends JavaPlugin implements Listener, Command
             getCommand("lavaisfloor").setExecutor(floorIsLava);
             getCommand("lavaisfloor").setTabCompleter(floorIsLava);
         }
+        if (getCommand("etkinligekatil") != null) {
+            getCommand("etkinligekatil").setExecutor(floorIsLava);
+        }
         getServer().getPluginManager().registerEvents(floorIsLava, this);
 
         getLogger().info("Hava Saldirisi Eklentisi (Plugin) aktif edildi!");

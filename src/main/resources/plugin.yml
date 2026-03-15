@@ -38,4 +38,7 @@ commands:
   lavaisfloor:
     description: Zemin Lav minigame komutlarını yönetir
     permission: bariskesertools.admin
-    usage: /lavaisfloor kur [boyut] veya /lavaisfloor bitir
+    usage: /lavaisfloor topla | baslat | kur | sil
+  etkinligekatil:
+    description: Zemin Lav etkinliğine veya toplanan sunucu etkinliklerine katılır.
+    usage: /etkinligekatil
