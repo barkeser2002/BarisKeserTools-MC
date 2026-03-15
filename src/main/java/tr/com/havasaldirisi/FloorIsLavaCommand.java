@@ -96,6 +96,16 @@ public class FloorIsLavaCommand implements CommandExecutor, TabCompleter, Listen
                         }
                         w.setSpawnLocation(loc); // Yeni güzel spawn noktası
                         player.sendMessage(ChatColor.GREEN + "► Dünya yaratıldı ve Okyanus olmayan bir merkeze (X:" + loc.getBlockX() + " Z:" + loc.getBlockZ() + ") ayarlandı!");
+                        
+                        // Chunky preload
+                        int borderSizeForPreload = pendingBorders.getOrDefault(worldName, 200);
+                        int chunkyRadius = (borderSizeForPreload / 2) + 150; // Border'ın bir tık fazlası (Yarıçap + 150 blok)
+                        Bukkit.getServer().dispatchCommand(Bukkit.getConsoleSender(), "chunky world " + worldName);
+                        Bukkit.getServer().dispatchCommand(Bukkit.getConsoleSender(), "chunky center " + loc.getBlockX() + " " + loc.getBlockZ());
+                        Bukkit.getServer().dispatchCommand(Bukkit.getConsoleSender(), "chunky radius " + chunkyRadius);
+                        Bukkit.getServer().dispatchCommand(Bukkit.getConsoleSender(), "chunky start");
+                        player.sendMessage(ChatColor.AQUA + "► Chunky ile ön yükleme (Preload) işlemi o bölge için başlatıldı! (Yarıçap: " + chunkyRadius + ")");
+                        
                         player.sendMessage(ChatColor.YELLOW + "► Oraya gitmek için: /mv tp " + worldName);
                         this.cancel();
                     }
