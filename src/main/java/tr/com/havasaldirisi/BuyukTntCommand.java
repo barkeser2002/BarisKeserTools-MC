@@ -1,10 +1,13 @@
 package tr.com.havasaldirisi;
 
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
+import org.bukkit.Particle;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -45,11 +48,15 @@ public class BuyukTntCommand implements CommandExecutor, TabCompleter, Listener 
         ItemStack item = new ItemStack(Material.TNT);
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
-            meta.setDisplayName(ChatColor.DARK_RED + "Devasa Büyük TNT");
-            meta.setLore(Arrays.asList(
-                ChatColor.GRAY + "Güç: " + ChatColor.YELLOW + guc,
-                ChatColor.GRAY + "Bu TNT'yi yere koyup çakmakla",
-                ChatColor.GRAY + "yaktığınızda gökyüzünden dev bir TNT düşer!"
+            meta.displayName(Component.text("💣 Devasa Büyük TNT 💣", NamedTextColor.DARK_RED).decoration(TextDecoration.BOLD, true));
+            meta.lore(Arrays.asList(
+                Component.empty(),
+                Component.text("Güç: ", NamedTextColor.GRAY).append(Component.text(String.valueOf(guc), NamedTextColor.YELLOW)),
+                Component.empty(),
+                Component.text("Bu TNT'yi yere koyup çakmakla", NamedTextColor.GRAY),
+                Component.text("yaktığınızda gökyüzünden dev bir TNT düşer!", NamedTextColor.GRAY),
+                Component.empty(),
+                Component.text("⚠ Dikkat: Çok güçlü patlama!", NamedTextColor.RED).decoration(TextDecoration.ITALIC, true)
             ));
             meta.getPersistentDataContainer().set(gucKey, PersistentDataType.INTEGER, guc);
             item.setItemMeta(meta);
@@ -60,17 +67,17 @@ public class BuyukTntCommand implements CommandExecutor, TabCompleter, Listener 
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, String[] args) {
         if (!(sender instanceof Player player)) {
-            sender.sendMessage(ChatColor.RED + "Bunu sadece oyuncular kullanabilir.");
+            sender.sendMessage(Component.text("Bunu sadece oyuncular kullanabilir.", NamedTextColor.RED));
             return true;
         }
 
         if (!player.hasPermission("bariskesertools.admin") && !player.isOp()) {
-            player.sendMessage(ChatColor.RED + "Bunun için yetkin yok!");
+            player.sendMessage(Component.text("Bunun için yetkin yok!", NamedTextColor.RED));
             return true;
         }
 
         if (args.length != 1) {
-            player.sendMessage(ChatColor.RED + "Kullanım: /buyuktnt [Güç(1-2000)]");
+            player.sendMessage(Component.text("Kullanım: /buyuktnt [Güç(1-2000)]", NamedTextColor.RED));
             return true;
         }
 
@@ -78,16 +85,17 @@ public class BuyukTntCommand implements CommandExecutor, TabCompleter, Listener 
         try {
             guc = Integer.parseInt(args[0]);
             if (guc < 1 || guc > 2000) {
-                player.sendMessage(ChatColor.RED + "Güç değeri 1 ile 2000 arasında olmalıdır!");
+                player.sendMessage(Component.text("Güç değeri 1 ile 2000 arasında olmalıdır!", NamedTextColor.RED));
                 return true;
             }
         } catch (NumberFormatException e) {
-            player.sendMessage(ChatColor.RED + "Lütfen geçerli bir tam sayı girin.");
+            player.sendMessage(Component.text("Lütfen geçerli bir tam sayı girin.", NamedTextColor.RED));
             return true;
         }
 
         player.getInventory().addItem(createTntItem(guc));
-        player.sendMessage(ChatColor.GREEN + "Özel Devasa TNT eşyası envanterinize eklendi! Yere koyup yakın.");
+        player.sendMessage(Component.text("💣 Devasa TNT (Güç: " + guc + ") envanterinize eklendi! Yere koyup yakın.", NamedTextColor.GREEN));
+        player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1f, 1.2f);
 
         return true;
     }
@@ -98,8 +106,6 @@ public class BuyukTntCommand implements CommandExecutor, TabCompleter, Listener 
         if (item.getType() == Material.TNT && item.hasItemMeta()) {
             if (item.getItemMeta().getPersistentDataContainer().has(gucKey, PersistentDataType.INTEGER)) {
                 int guc = item.getItemMeta().getPersistentDataContainer().getOrDefault(gucKey, PersistentDataType.INTEGER, 100);
-                
-                // Location map'e eklerken tamamen temiz xyz kullan
                 Location blockLoc = event.getBlock().getLocation();
                 placedTnts.put(blockLoc, guc);
             }
@@ -111,8 +117,8 @@ public class BuyukTntCommand implements CommandExecutor, TabCompleter, Listener 
         Location loc = event.getBlock().getLocation();
         if (placedTnts.containsKey(loc)) {
             int guc = placedTnts.remove(loc);
-            event.setDropItems(false); // Normal TNT düşmesini engelle
-            event.getBlock().getWorld().dropItemNaturally(loc, createTntItem(guc)); // Özel eşya olarak düşsün
+            event.setDropItems(false);
+            event.getBlock().getWorld().dropItemNaturally(loc, createTntItem(guc));
         }
     }
 
@@ -121,34 +127,34 @@ public class BuyukTntCommand implements CommandExecutor, TabCompleter, Listener 
         Location loc = event.getBlock().getLocation();
         if (placedTnts.containsKey(loc)) {
             int guc = placedTnts.remove(loc);
-            
-            // Normal ateşlemeyi iptal edip bloğu havaya uçuruyoruz (siliniyor)
             event.setCancelled(true);
             event.getBlock().setType(Material.AIR);
-            
             triggerFallingTnt(loc, guc);
         }
     }
 
     private void triggerFallingTnt(Location origin, int guc) {
-        // Boyut her zaman 8.0 olarak sabitlendi
         float scale = 10.0f;
-
-        Location spawnLoc = origin.clone().add(0.5, 90.0, 0.5); // Yerden 90 blok yukarıda belirir
+        Location spawnLoc = origin.clone().add(0.5, 90.0, 0.5);
         TNTPrimed tnt = origin.getWorld().spawn(spawnLoc, TNTPrimed.class);
-        tnt.setYield((float) guc); // TNT Patlama Gücü
-        tnt.setFuseTicks(400); // Havada süzülmesi için geniş süre ver (yere değince aniden patlayacağı için)
-        
+        tnt.setYield((float) guc);
+        tnt.setFuseTicks(400);
+
         String version = Bukkit.getServer().getBukkitVersion();
         boolean isModern = version.contains("1.21") || version.contains("1.20.5") || version.contains("1.20.6");
 
         if (isModern) {
-            // Türkçe ayarlarda ',' yerine '.' kullanarak tam geçerli bir komut yapısı (Görsel büyüme)
             String cmd = "attribute " + tnt.getUniqueId() + " minecraft:generic.scale base set " + String.format(java.util.Locale.US, "%.2f", scale);
             Bukkit.getServer().dispatchCommand(Bukkit.getConsoleSender(), cmd);
         }
+        
+        // Ateşlenme duyurusu
+        for (Player p : origin.getWorld().getPlayers()) {
+            p.sendMessage(Component.text("⚠ ", NamedTextColor.RED)
+                .append(Component.text("DEVASA TNT ATEŞLENDİ!", NamedTextColor.DARK_RED).decoration(TextDecoration.BOLD, true))
+                .append(Component.text(" (Güç: " + guc + ")", NamedTextColor.YELLOW)));
+        }
 
-        // Fiiiiyuuuu ses efekti başlat (düşerken)
         new BukkitRunnable() {
             @Override
             public void run() {
@@ -156,18 +162,20 @@ public class BuyukTntCommand implements CommandExecutor, TabCompleter, Listener 
                     this.cancel();
                     return;
                 }
-                // Yere düştüğünde veya tamamen hareketsiz kaldığında
                 if (tnt.isOnGround() || tnt.getVelocity().lengthSquared() == 0.0) {
-                    tnt.setFuseTicks(20); // 1 saniye (20 tick) sonra patla!
+                    tnt.setFuseTicks(20);
                     this.cancel();
                 } else {
-                    // Fiiiiyuuuu efekti (her 10 tickte bir çal)
+                    // Düşerken partikül efekti
+                    tnt.getWorld().spawnParticle(Particle.FLAME, tnt.getLocation(), 5, 0.5, 0.5, 0.5, 0.02);
+                    tnt.getWorld().spawnParticle(Particle.SMOKE_NORMAL, tnt.getLocation(), 3, 0.3, 0.3, 0.3, 0.01);
+                    
                     if (tnt.getFuseTicks() % 10 == 0) {
                         tnt.getWorld().playSound(tnt.getLocation(), org.bukkit.Sound.ENTITY_FIREWORK_ROCKET_LAUNCH, 1.2f, 1.8f);
                     }
                 }
             }
-        }.runTaskTimer(plugin, 10L, 1L); // Yarım saniye bekleyip her tick kontrol etmeye başla
+        }.runTaskTimer(plugin, 10L, 1L);
     }
 
     @Nullable

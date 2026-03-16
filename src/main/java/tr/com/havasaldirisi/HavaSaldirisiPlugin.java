@@ -1,27 +1,26 @@
 package tr.com.havasaldirisi;
 
-import org.bukkit.ChatColor;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
-import org.bukkit.entity.EntityType;
+import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.TNTPrimed;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
-import org.bukkit.event.entity.EntityDamageEvent;
-import org.bukkit.event.player.PlayerFishEvent;
+import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.Damageable;
 import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.command.TabCompleter;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -30,7 +29,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
-public class HavaSaldirisiPlugin extends JavaPlugin implements Listener, CommandExecutor, TabCompleter {
+public class HavaSaldirisiPlugin extends JavaPlugin implements Listener {
 
     private NamespacedKey oltaKey;
     private NamespacedKey tntSayisiKey;
@@ -113,67 +112,91 @@ public class HavaSaldirisiPlugin extends JavaPlugin implements Listener, Command
     }
 
     @Override
+    public void onDisable() {
+        getLogger().info("Hava Saldirisi Eklentisi (Plugin) devre dışı bırakıldı.");
+    }
+
+    @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, String[] args) {
         if (command.getName().equalsIgnoreCase("havasaldirisi")) {
             if (sender instanceof Player player) {
                 if (player.hasPermission("bariskesertools.admin") || player.isOp()) {
                     if (args.length < 5) {
-                        player.sendMessage(ChatColor.RED + "Kullanım: /havasaldirisi [tntsayisi] [nekadarustte] [patlamasüresi_tick] [şekil] [oyuncuyahasar_miktari]");
+                        player.sendMessage(Component.text("Kullanım: /havasaldirisi [tntsayisi] [nekadarustte] [patlamasüresi_tick] [şekil] [oyuncuyahasar_miktari]", NamedTextColor.RED));
                         return true;
                     }
                 
-                int tntSayisi;
-                int yukseklik;
-                int patlamaSuresi;
-                double oyuncuHasari;
-                
-                try {
-                    tntSayisi = Integer.parseInt(args[0]);
-                    yukseklik = Integer.parseInt(args[1]);
-                    patlamaSuresi = Integer.parseInt(args[2]);
-                    oyuncuHasari = Double.parseDouble(args[4]);
-                } catch (NumberFormatException e) {
-                    player.sendMessage(ChatColor.RED + "Lütfen geçerli sayılar (tnt, yükseklik, patlama süresi, hasar) girin!");
-                    return true;
+                    int tntSayisi;
+                    int yukseklik;
+                    int patlamaSuresi;
+                    double oyuncuHasari;
+                    
+                    try {
+                        tntSayisi = Integer.parseInt(args[0]);
+                        yukseklik = Integer.parseInt(args[1]);
+                        patlamaSuresi = Integer.parseInt(args[2]);
+                        oyuncuHasari = Double.parseDouble(args[4]);
+                    } catch (NumberFormatException e) {
+                        player.sendMessage(Component.text("Lütfen geçerli sayılar (tnt, yükseklik, patlama süresi, hasar) girin!", NamedTextColor.RED));
+                        return true;
+                    }
+                    
+                    String yayilmaTipi = args[3].toLowerCase();
+                    List<String> validTypes = Arrays.asList("tekblokiçinde", "yuvarlak", "dağınıkrasgele", "kare", "yıldız", "çizgi", "yağmur", "orbital");
+                    if (!validTypes.contains(yayilmaTipi)) {
+                        player.sendMessage(Component.text("Geçersiz dizilim türü! Seçenekler: " + String.join(", ", validTypes), NamedTextColor.RED));
+                        return true;
+                    }
+                    
+                    if (tntSayisi > 2048) {
+                        player.sendMessage(Component.text("En fazla 2048 TNT ekleyebilirsin!", NamedTextColor.RED));
+                        tntSayisi = 2048;
+                    }
+                    
+                    ItemStack rod = new ItemStack(Material.FISHING_ROD);
+                    ItemMeta meta = rod.getItemMeta();
+                    if (meta != null) {
+                        meta.displayName(Component.text("⚡ Hava Saldırısı Oltası ⚡", NamedTextColor.RED).decoration(TextDecoration.BOLD, true));
+                        
+                        // Lore bilgileri
+                        meta.lore(Arrays.asList(
+                            Component.empty(),
+                            Component.text("TNT Sayısı: ", NamedTextColor.GRAY).append(Component.text(String.valueOf(tntSayisi), NamedTextColor.YELLOW)),
+                            Component.text("Yükseklik: ", NamedTextColor.GRAY).append(Component.text(yukseklik + " blok", NamedTextColor.AQUA)),
+                            Component.text("Patlama Süresi: ", NamedTextColor.GRAY).append(Component.text(patlamaSuresi + " tick", NamedTextColor.GREEN)),
+                            Component.text("Yayılma: ", NamedTextColor.GRAY).append(Component.text(yayilmaTipi, NamedTextColor.LIGHT_PURPLE)),
+                            Component.text("Oyuncu Hasarı: ", NamedTextColor.GRAY).append(Component.text(String.valueOf(oyuncuHasari), NamedTextColor.RED)),
+                            Component.empty(),
+                            Component.text("Sağ tık ile hedefli hava saldırısı!", NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, true)
+                        ));
+                        
+                        // Enchant glow efekti
+                        meta.addEnchant(Enchantment.DURABILITY, 1, true);
+                        meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
+                        
+                        meta.getPersistentDataContainer().set(oltaKey, PersistentDataType.BYTE, (byte) 1);
+                        meta.getPersistentDataContainer().set(tntSayisiKey, PersistentDataType.INTEGER, tntSayisi);
+                        meta.getPersistentDataContainer().set(yukseklikKey, PersistentDataType.INTEGER, yukseklik);
+                        meta.getPersistentDataContainer().set(patlamaSuresiKey, PersistentDataType.INTEGER, patlamaSuresi);
+                        meta.getPersistentDataContainer().set(yayilmaKey, PersistentDataType.STRING, yayilmaTipi);
+                        meta.getPersistentDataContainer().set(oyuncuHasariKey, PersistentDataType.DOUBLE, oyuncuHasari);
+                        rod.setItemMeta(meta);
+                    }
+                    player.getInventory().addItem(rod);
+                    player.sendMessage(Component.text("⚡ Hava Saldırısı Oltası ", NamedTextColor.GREEN)
+                        .append(Component.text("(" + tntSayisi + " TNT, " + yukseklik + " Y, " + patlamaSuresi + " Tick, " + yayilmaTipi + ", Hasar: " + oyuncuHasari + ")", NamedTextColor.GRAY))
+                        .append(Component.text(" başarıyla verildi!", NamedTextColor.GREEN)));
+                    player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1f, 1.2f);
+                } else {
+                    sender.sendMessage(Component.text("Bunun için yetkin yok!", NamedTextColor.RED));
                 }
-                
-                String yayilmaTipi = args[3].toLowerCase();
-                List<String> validTypes = Arrays.asList("tekblokiçinde", "yuvarlak", "dağınıkrasgele", "kare", "yıldız", "çizgi", "yağmur", "orbital");
-                if (!validTypes.contains(yayilmaTipi)) {
-                    player.sendMessage(ChatColor.RED + "Geçersiz dizilim türü! Seçenekler: " + String.join(", ", validTypes));
-                    return true;
-                }
-                
-                if (tntSayisi > 2048) {
-                    player.sendMessage(ChatColor.RED + "En fazla 2048 TNT ekleyebilirsin!");
-                    tntSayisi = 2048;
-                }
-                
-                ItemStack rod = new ItemStack(Material.FISHING_ROD);
-                ItemMeta meta = rod.getItemMeta();
-                if (meta != null) {
-                    meta.setDisplayName(ChatColor.RED + "" + ChatColor.BOLD + "Hava Saldırısı Oltası");
-                    meta.getPersistentDataContainer().set(oltaKey, PersistentDataType.BYTE, (byte) 1);
-                    meta.getPersistentDataContainer().set(tntSayisiKey, PersistentDataType.INTEGER, tntSayisi);
-                    meta.getPersistentDataContainer().set(yukseklikKey, PersistentDataType.INTEGER, yukseklik);
-                    meta.getPersistentDataContainer().set(patlamaSuresiKey, PersistentDataType.INTEGER, patlamaSuresi);
-                    meta.getPersistentDataContainer().set(yayilmaKey, PersistentDataType.STRING, yayilmaTipi);
-                    meta.getPersistentDataContainer().set(oyuncuHasariKey, PersistentDataType.DOUBLE, oyuncuHasari);
-                    rod.setItemMeta(meta);
-                }
-                player.getInventory().addItem(rod);
-                player.sendMessage(ChatColor.GREEN + "Hava Saldırısı Oltası (" + tntSayisi + " TNT, " + yukseklik + " Y, " + patlamaSuresi + " Tick, " + yayilmaTipi + ", Hasar: " + oyuncuHasari + ") başarıyla verildi!");
             } else {
-                sender.sendMessage(ChatColor.RED + "Bunun için yetkin yok!");
+                sender.sendMessage(Component.text("Bu komut sadece oyuncular içindir!", NamedTextColor.RED));
             }
-        } else {
-            sender.sendMessage(ChatColor.RED + "Bu komut sadece oyuncular içindir!");
+            return true;
         }
-        return true;
+        return false;
     }
-    
-    return false;
-}
 
     @Nullable
     @Override
@@ -184,7 +207,7 @@ public class HavaSaldirisiPlugin extends JavaPlugin implements Listener, Command
             } else if (args.length == 2) {
                 return Arrays.asList("10", "20", "30", "50");
             } else if (args.length == 3) {
-                return Arrays.asList("20", "40", "60", "80", "100"); // 80 tick = 4s
+                return Arrays.asList("20", "40", "60", "80", "100");
             } else if (args.length == 4) {
                 List<String> types = Arrays.asList("tekblokiçinde", "yuvarlak", "dağınıkrasgele", "kare", "yıldız", "çizgi", "yağmur", "orbital");
                 List<String> completions = new ArrayList<>();
@@ -195,7 +218,7 @@ public class HavaSaldirisiPlugin extends JavaPlugin implements Listener, Command
                 }
                 return completions;
             } else if (args.length == 5) {
-                return Arrays.asList("0.0", "5.0", "10.0", "20.0"); // örnek hasar değerleri (0 olursa kapatılmış sayılabilir vs.)
+                return Arrays.asList("0.0", "5.0", "10.0", "20.0");
             }
         }
         return new ArrayList<>();
@@ -210,13 +233,12 @@ public class HavaSaldirisiPlugin extends JavaPlugin implements Listener, Command
             return;
         }
 
-        // Olta kontrolü
         ItemStack usingItem = event.getItem();
 
         if (usingItem != null && usingItem.getType() == Material.FISHING_ROD && usingItem.getItemMeta() != null) {
             if (usingItem.getItemMeta().getPersistentDataContainer().has(oltaKey, PersistentDataType.BYTE)) {
 
-                event.setCancelled(true); // Oltanın ip atmasını tamamen iptal et, sadece sağ tık mekaniği çalışsın!
+                event.setCancelled(true);
 
                 Location eyeLoc = player.getEyeLocation();
                 
@@ -227,181 +249,172 @@ public class HavaSaldirisiPlugin extends JavaPlugin implements Listener, Command
                 
                 if (tntSayisi > 2048) tntSayisi = 2048;
 
-                // Mouse ile bakılan bloğun koordinatını bul
-                Location targetLoc = null;
+                Location targetLoc;
                 int maxDistance = 100;
                 org.bukkit.block.Block targetBlock = player.getTargetBlockExact(maxDistance);
                 if (targetBlock != null && targetBlock.getType() != Material.AIR) {
                     targetLoc = targetBlock.getLocation().clone().add(0.5, yukseklik, 0.5);
                 } else {
-                    // Hiç blok yoksa, ileriye doğru git ve üstüne at
                     targetLoc = eyeLoc.clone().add(eyeLoc.getDirection().multiply(20));
                     targetLoc.add(0, yukseklik, 0);
                 }
 
-                // 3) TNT'leri İstenilen Şekilde Spawnla
-                double radius = Math.min(10.0, tntSayisi * 0.5); // Şekiller için genel yarıçap baz alınacak değer
+                double radius = Math.min(10.0, tntSayisi * 0.5);
                 Random random = new Random();
                     
-                    double finalHasar = usingItem.getItemMeta().getPersistentDataContainer().getOrDefault(oyuncuHasariKey, PersistentDataType.DOUBLE, -1.0);
-                    List<TNTPrimed> doganTntler = new ArrayList<>();
+                double finalHasar = usingItem.getItemMeta().getPersistentDataContainer().getOrDefault(oyuncuHasariKey, PersistentDataType.DOUBLE, -1.0);
+                List<TNTPrimed> doganTntler = new ArrayList<>();
 
-                    if (tntSayisi == 1 || yayilmaTipi.equals("tekblokiçinde")) {
-                        for (int i = 0; i < tntSayisi; i++) {
-                            TNTPrimed tnt = (TNTPrimed) player.getWorld().spawn(targetLoc, TNTPrimed.class);
-                            tnt.setFuseTicks(patlamaSuresi);
-                            doganTntler.add(tnt);
-                        }
-                    } else if (yayilmaTipi.equals("dağınıkrasgele")) {
-                        for (int i = 0; i < tntSayisi; i++) {
-                            double xOffset = (random.nextDouble() * 2 * radius) - radius;
-                            double zOffset = (random.nextDouble() * 2 * radius) - radius;
-                            
+                if (tntSayisi == 1 || yayilmaTipi.equals("tekblokiçinde")) {
+                    for (int i = 0; i < tntSayisi; i++) {
+                        TNTPrimed tnt = (TNTPrimed) player.getWorld().spawn(targetLoc, TNTPrimed.class);
+                        tnt.setFuseTicks(patlamaSuresi);
+                        doganTntler.add(tnt);
+                    }
+                } else if (yayilmaTipi.equals("dağınıkrasgele")) {
+                    for (int i = 0; i < tntSayisi; i++) {
+                        double xOffset = (random.nextDouble() * 2 * radius) - radius;
+                        double zOffset = (random.nextDouble() * 2 * radius) - radius;
+                        
+                        Location spawnLoc = targetLoc.clone().add(xOffset, 0, zOffset);
+                        TNTPrimed tnt = (TNTPrimed) player.getWorld().spawn(spawnLoc, TNTPrimed.class);
+                        tnt.setFuseTicks(patlamaSuresi);
+                        doganTntler.add(tnt);
+                    }
+                } else if (yayilmaTipi.equals("kare")) {
+                    int edge = (int) Math.ceil(Math.sqrt(tntSayisi));
+                    double spacing = (radius * 2) / Math.max(1, edge - 1);
+                    int count = 0;
+                    for (int x = 0; x < edge; x++) {
+                        for (int z = 0; z < edge; z++) {
+                            if (count >= tntSayisi) break;
+                            double xOffset = -radius + (x * spacing);
+                            double zOffset = -radius + (z * spacing);
                             Location spawnLoc = targetLoc.clone().add(xOffset, 0, zOffset);
                             TNTPrimed tnt = (TNTPrimed) player.getWorld().spawn(spawnLoc, TNTPrimed.class);
                             tnt.setFuseTicks(patlamaSuresi);
                             doganTntler.add(tnt);
-                        }
-                    } else if (yayilmaTipi.equals("kare")) {
-                        // Basit kare dizilimi (ızgara)
-                        int edge = (int) Math.ceil(Math.sqrt(tntSayisi));
-                        double spacing = (radius * 2) / Math.max(1, edge - 1);
-                        int count = 0;
-                        for (int x = 0; x < edge; x++) {
-                            for (int z = 0; z < edge; z++) {
-                                if (count >= tntSayisi) break;
-                                double xOffset = -radius + (x * spacing);
-                                double zOffset = -radius + (z * spacing);
-                                Location spawnLoc = targetLoc.clone().add(xOffset, 0, zOffset);
-                                TNTPrimed tnt = (TNTPrimed) player.getWorld().spawn(spawnLoc, TNTPrimed.class);
-                                tnt.setFuseTicks(patlamaSuresi);
-                                doganTntler.add(tnt);
-                                count++;
-                            }
-                        }
-                    } else if (yayilmaTipi.equals("yıldız")) {
-                        // 5 kollu veya n kollu basit yıldız şekli denemesi (çaprazlara uzanan çizgiler)
-                        int arms = 5; 
-                        int perArm = tntSayisi / arms;
-                        int count = 0;
-                        for (int arm = 0; arm < arms; arm++) {
-                            double angle = 2 * Math.PI * arm / arms;
-                            for (int i = 1; i <= perArm; i++) {
-                                if (count >= tntSayisi) break;
-                                double dist = (radius / perArm) * i;
-                                double xOffset = dist * Math.cos(angle);
-                                double zOffset = dist * Math.sin(angle);
-                                Location spawnLoc = targetLoc.clone().add(xOffset, 0, zOffset);
-                                TNTPrimed tnt = (TNTPrimed) player.getWorld().spawn(spawnLoc, TNTPrimed.class);
-                                tnt.setFuseTicks(patlamaSuresi);
-                                doganTntler.add(tnt);
-                                count++;
-                            }
-                        }
-                        // Geri kalanı merkeze
-                        while (count < tntSayisi) {
-                            TNTPrimed tnt = (TNTPrimed) player.getWorld().spawn(targetLoc, TNTPrimed.class);
-                            tnt.setFuseTicks(patlamaSuresi);
-                            doganTntler.add(tnt);
                             count++;
                         }
-                    } else if (yayilmaTipi.equals("çizgi")) {
-                        double spacing = (radius * 2) / Math.max(1, tntSayisi - 1);
-                        for (int i = 0; i < tntSayisi; i++) {
-                            double xOffset = -radius + (i * spacing);
-                            Location spawnLoc = targetLoc.clone().add(xOffset, 0, 0); // X ekseninde düz çizgi
-                            TNTPrimed tnt = (TNTPrimed) player.getWorld().spawn(spawnLoc, TNTPrimed.class);
-                            tnt.setFuseTicks(patlamaSuresi);
-                            doganTntler.add(tnt);
-                        }
-                    } else if (yayilmaTipi.equals("yağmur")) {
-                        for (int i = 0; i < tntSayisi; i++) {
-                            double yOffset = i * 2.0; // Her tnt arasına 2 blok dikey boşluk
-                            Location spawnLoc = targetLoc.clone().add(0, yOffset, 0);
-                            TNTPrimed tnt = (TNTPrimed) player.getWorld().spawn(spawnLoc, TNTPrimed.class);
-                            tnt.setFuseTicks(patlamaSuresi);
-                            doganTntler.add(tnt);
-                        }
-                    } else if (yayilmaTipi.equals("orbital")) {
-                        // Yuvarlak içinde yuvarlak, ama yayılarak gidiyor velocity'si var
-                        int rings = (int) Math.sqrt(tntSayisi) + 1;
-                        int count = 0;
-                        for (int r = 1; r <= rings; r++) {
-                            int tntsInRing = r * 6;
-                            double ringRadius = r * 1.5; // Giderek büyüyen halkalar
-                            for (int i = 0; i < tntsInRing; i++) {
-                                if (count >= tntSayisi) break;
-                                double angle = 2 * Math.PI * i / tntsInRing;
-                                double xOffset = ringRadius * Math.cos(angle);
-                                double zOffset = ringRadius * Math.sin(angle);
-                                
-                                Location spawnLoc = targetLoc.clone().add(xOffset, 0, zOffset);
-                                TNTPrimed tnt = (TNTPrimed) player.getWorld().spawn(spawnLoc, TNTPrimed.class);
-                                tnt.setFuseTicks(patlamaSuresi);
-                                
-                                // Dışa doğru bir momentum (velocity) ekle
-                                org.bukkit.util.Vector velocity = new org.bukkit.util.Vector(xOffset, 0, zOffset).normalize().multiply(0.5);
-                                tnt.setVelocity(velocity);
-                                doganTntler.add(tnt);
-                                
-                                count++;
-                            }
-                        }
-                        // Geri kalanı merkeze
-                        while (count < tntSayisi) {
-                            TNTPrimed tnt = (TNTPrimed) player.getWorld().spawn(targetLoc, TNTPrimed.class);
-                            tnt.setFuseTicks(patlamaSuresi);
-                            doganTntler.add(tnt);
-                            count++;
-                        }
-                    } else {
-                        // "yuvarlak" (Varsayılan veya yuvarlak seçilmişse)
-                        for (int i = 0; i < tntSayisi; i++) {
-                            double angle = 2 * Math.PI * i / tntSayisi;
-                            double xOffset = radius * Math.cos(angle);
-                            double zOffset = radius * Math.sin(angle);
-                            
+                    }
+                } else if (yayilmaTipi.equals("yıldız")) {
+                    int arms = 5; 
+                    int perArm = tntSayisi / arms;
+                    int count = 0;
+                    for (int arm = 0; arm < arms; arm++) {
+                        double angle = 2 * Math.PI * arm / arms;
+                        for (int i = 1; i <= perArm; i++) {
+                            if (count >= tntSayisi) break;
+                            double dist = (radius / perArm) * i;
+                            double xOffset = dist * Math.cos(angle);
+                            double zOffset = dist * Math.sin(angle);
                             Location spawnLoc = targetLoc.clone().add(xOffset, 0, zOffset);
                             TNTPrimed tnt = (TNTPrimed) player.getWorld().spawn(spawnLoc, TNTPrimed.class);
                             tnt.setFuseTicks(patlamaSuresi);
                             doganTntler.add(tnt);
+                            count++;
                         }
                     }
-                    
-                    // TNT Hasarlarını Ayarla
-                    if (finalHasar >= 0.0) {
-                        for (TNTPrimed t : doganTntler) {
-                            t.setMetadata("ozel_tnt_hasar", new FixedMetadataValue(this, finalHasar));
+                    while (count < tntSayisi) {
+                        TNTPrimed tnt = (TNTPrimed) player.getWorld().spawn(targetLoc, TNTPrimed.class);
+                        tnt.setFuseTicks(patlamaSuresi);
+                        doganTntler.add(tnt);
+                        count++;
+                    }
+                } else if (yayilmaTipi.equals("çizgi")) {
+                    double spacing = (radius * 2) / Math.max(1, tntSayisi - 1);
+                    for (int i = 0; i < tntSayisi; i++) {
+                        double xOffset = -radius + (i * spacing);
+                        Location spawnLoc = targetLoc.clone().add(xOffset, 0, 0);
+                        TNTPrimed tnt = (TNTPrimed) player.getWorld().spawn(spawnLoc, TNTPrimed.class);
+                        tnt.setFuseTicks(patlamaSuresi);
+                        doganTntler.add(tnt);
+                    }
+                } else if (yayilmaTipi.equals("yağmur")) {
+                    for (int i = 0; i < tntSayisi; i++) {
+                        double yOffset = i * 2.0;
+                        Location spawnLoc = targetLoc.clone().add(0, yOffset, 0);
+                        TNTPrimed tnt = (TNTPrimed) player.getWorld().spawn(spawnLoc, TNTPrimed.class);
+                        tnt.setFuseTicks(patlamaSuresi);
+                        doganTntler.add(tnt);
+                    }
+                } else if (yayilmaTipi.equals("orbital")) {
+                    int rings = (int) Math.sqrt(tntSayisi) + 1;
+                    int count = 0;
+                    for (int r = 1; r <= rings; r++) {
+                        int tntsInRing = r * 6;
+                        double ringRadius = r * 1.5;
+                        for (int i = 0; i < tntsInRing; i++) {
+                            if (count >= tntSayisi) break;
+                            double angle = 2 * Math.PI * i / tntsInRing;
+                            double xOffset = ringRadius * Math.cos(angle);
+                            double zOffset = ringRadius * Math.sin(angle);
+                            
+                            Location spawnLoc = targetLoc.clone().add(xOffset, 0, zOffset);
+                            TNTPrimed tnt = (TNTPrimed) player.getWorld().spawn(spawnLoc, TNTPrimed.class);
+                            tnt.setFuseTicks(patlamaSuresi);
+                            
+                            org.bukkit.util.Vector velocity = new org.bukkit.util.Vector(xOffset, 0, zOffset).normalize().multiply(0.5);
+                            tnt.setVelocity(velocity);
+                            doganTntler.add(tnt);
+                            
+                            count++;
                         }
                     }
+                    while (count < tntSayisi) {
+                        TNTPrimed tnt = (TNTPrimed) player.getWorld().spawn(targetLoc, TNTPrimed.class);
+                        tnt.setFuseTicks(patlamaSuresi);
+                        doganTntler.add(tnt);
+                        count++;
+                    }
+                } else {
+                    for (int i = 0; i < tntSayisi; i++) {
+                        double angle = 2 * Math.PI * i / tntSayisi;
+                        double xOffset = radius * Math.cos(angle);
+                        double zOffset = radius * Math.sin(angle);
+                        
+                        Location spawnLoc = targetLoc.clone().add(xOffset, 0, zOffset);
+                        TNTPrimed tnt = (TNTPrimed) player.getWorld().spawn(spawnLoc, TNTPrimed.class);
+                        tnt.setFuseTicks(patlamaSuresi);
+                        doganTntler.add(tnt);
+                    }
+                }
+                
+                // TNT Hasarlarını Ayarla
+                if (finalHasar >= 0.0) {
+                    for (TNTPrimed t : doganTntler) {
+                        t.setMetadata("ozel_tnt_hasar", new FixedMetadataValue(this, finalHasar));
+                    }
+                }
 
-                    // 4) Oltanın dayanıklılığını (canını) 1 azalt
-                    ItemMeta meta = usingItem.getItemMeta();
-                    if (meta instanceof Damageable damageable) {
-                        event.setCancelled(true); // Normal olta mekaniklerini iptal et
-                        damageable.setDamage(damageable.getDamage() + 1);
-                        usingItem.setItemMeta(damageable);
+                // Oltanın dayanıklılığını (canını) 1 azalt
+                ItemMeta meta = usingItem.getItemMeta();
+                if (meta instanceof Damageable damageable) {
+                    event.setCancelled(true);
+                    damageable.setDamage(damageable.getDamage() + 1);
+                    usingItem.setItemMeta(damageable);
 
-                        if (damageable.getDamage() >= usingItem.getType().getMaxDurability()) {
-                            usingItem.setAmount(0);
-                            // 8 blok yarıçapındaki tüm oyunculara sesi çal
-                            double breakSoundRadius = 8.0;
-                            Location breakLoc = player.getLocation();
-                            for (Player p : player.getWorld().getPlayers()) {
-                                if (p.getLocation().distanceSquared(breakLoc) <= breakSoundRadius * breakSoundRadius) {
-                                    p.playSound(breakLoc, org.bukkit.Sound.ENTITY_ITEM_BREAK, 1f, 1f);
-                                }
+                    if (damageable.getDamage() >= usingItem.getType().getMaxDurability()) {
+                        usingItem.setAmount(0);
+                        double breakSoundRadius = 8.0;
+                        Location breakLoc = player.getLocation();
+                        for (Player p : player.getWorld().getPlayers()) {
+                            if (p.getLocation().distanceSquared(breakLoc) <= breakSoundRadius * breakSoundRadius) {
+                                p.playSound(breakLoc, org.bukkit.Sound.ENTITY_ITEM_BREAK, 1f, 1f);
                             }
                         }
                     }
                 }
+                
+                // Ateşleme sesi
+                player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_FIREWORK_ROCKET_LAUNCH, 1.0f, 0.8f);
             }
         }
+    }
     
     @EventHandler
     public void onEntityDamageByEntity(EntityDamageByEntityEvent event) {
-        if (event.getDamager() instanceof TNTPrimed tnt && event.getEntity() instanceof Player targetPlayer) {
-            // Eğer tnt oyuncuya vuruyorsa hasarı değiştir
+        if (event.getDamager() instanceof TNTPrimed tnt && event.getEntity() instanceof Player) {
             if (tnt.hasMetadata("ozel_tnt_hasar")) {
                 double ozelHasar = tnt.getMetadata("ozel_tnt_hasar").get(0).asDouble();
                 if (ozelHasar == 0.0) {

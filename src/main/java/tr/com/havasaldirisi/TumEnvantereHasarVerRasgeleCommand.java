@@ -1,6 +1,7 @@
 package tr.com.havasaldirisi;
 
-import org.bukkit.ChatColor;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -19,14 +20,14 @@ public class TumEnvantereHasarVerRasgeleCommand implements CommandExecutor {
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, String[] args) {
         if (!(sender instanceof Player)) {
-            sender.sendMessage(ChatColor.RED + "Bu komutu sadece oyuncular kullanabilir!");
+            sender.sendMessage(Component.text("Bu komutu sadece oyuncular kullanabilir!", NamedTextColor.RED));
             return true;
         }
 
         Player player = (Player) sender;
 
         if (!player.hasPermission("bariskesertools.admin") && !player.isOp()) {
-            player.sendMessage(ChatColor.RED + "Bunun için yetkin yok!");
+            player.sendMessage(Component.text("Bunun için yetkin yok!", NamedTextColor.RED));
             return true;
         }
 
@@ -38,28 +39,24 @@ public class TumEnvantereHasarVerRasgeleCommand implements CommandExecutor {
             if (item == null || item.getType().isAir()) continue;
 
             ItemMeta meta = item.getItemMeta();
-            if (meta instanceof Damageable) {
+            if (meta instanceof Damageable damageable) {
                 short maxDurability = item.getType().getMaxDurability();
-                
+
                 if (maxDurability > 0) {
-                    Damageable damageable = (Damageable) meta;
                     int currentDamage = damageable.getDamage();
                     int remainingDurability = maxDurability - currentDamage;
 
-                    // Eğer eşya zaten kırılmamışsa
                     if (remainingDurability > 0) {
-                        // Kalan dayanıklılık kadar rastgele bir hasar belirle (1 ile remainingDurability arası)
                         int randomDamage = random.nextInt(remainingDurability) + 1;
-                        
                         damageable.setDamage(currentDamage + randomDamage);
-                        item.setItemMeta((ItemMeta) damageable);
+                        item.setItemMeta(damageable);
                         affectedItems++;
                     }
                 }
             }
         }
 
-        player.sendMessage(ChatColor.GREEN + "Envanterindeki " + affectedItems + " adet eşyaya rastgele hasar verildi!");
+        player.sendMessage(Component.text("Envanterindeki " + affectedItems + " adet eşyaya rastgele hasar verildi!", NamedTextColor.GREEN));
         return true;
     }
 }

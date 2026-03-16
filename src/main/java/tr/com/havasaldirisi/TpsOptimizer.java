@@ -1,7 +1,8 @@
 package tr.com.havasaldirisi;
 
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.GameMode;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
@@ -32,11 +33,11 @@ import java.util.List;
 public class TpsOptimizer implements Listener, CommandExecutor {
 
     private final JavaPlugin plugin;
-    private final String GUI_NAME = ChatColor.DARK_RED + "TPS Optimizasyon Menüsü";
+    private final Component GUI_NAME = Component.text("⚙ TPS Optimizasyon Menüsü", NamedTextColor.DARK_RED);
 
     public TpsOptimizer(JavaPlugin plugin) {
         this.plugin = plugin;
-        
+
         plugin.getConfig().addDefault("tps_optimizer.block_drops", true);
         plugin.getConfig().addDefault("tps_optimizer.player_render", true);
         plugin.getConfig().addDefault("tps_optimizer.explosion_drops", true);
@@ -52,11 +53,11 @@ public class TpsOptimizer implements Listener, CommandExecutor {
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
         if (command.getName().equalsIgnoreCase("baris-optimizasyon")) {
             if (!(sender instanceof Player player)) {
-                sender.sendMessage("Bu komut sadece oyuncular icindir.");
+                sender.sendMessage(Component.text("Bu komut sadece oyuncular icindir."));
                 return true;
             }
             if (!player.hasPermission("bariskesertools.admin") && !player.isOp()) {
-                player.sendMessage(ChatColor.RED + "Bunun icin yetkin yok!");
+                player.sendMessage(Component.text("Bunun icin yetkin yok!", NamedTextColor.RED));
                 return true;
             }
             openGui(player);
@@ -73,24 +74,37 @@ public class TpsOptimizer implements Listener, CommandExecutor {
         boolean explosionDrops = plugin.getConfig().getBoolean("tps_optimizer.explosion_drops");
         boolean mobAi = plugin.getConfig().getBoolean("tps_optimizer.mob_ai");
 
-        inv.setItem(10, createGuiItem(Material.DIAMOND_PICKAXE, ChatColor.YELLOW + "Aninda Blok Toplama", blockDrops, "Bloklari kirildiginda direkt envantere alir,", "Yere dusen esya lagini engeller."));
-        inv.setItem(12, createGuiItem(Material.ENDER_EYE, ChatColor.AQUA + "Oyuncu Render Optimizasyonu", playerRender, "Kalabalik alanlarda uzaktaki oyunculari", "NMS/Render motorundan gizler."));
-        inv.setItem(14, createGuiItem(Material.TNT, ChatColor.RED + "Patlama Drop Optimizasyonu", explosionDrops, "TNT patlamalarindan cikan tum esyalari", "aninda silerek devasa FPS dususlerini onler."));
-        inv.setItem(16, createGuiItem(Material.ZOMBIE_HEAD, ChatColor.DARK_PURPLE + "Yapay Zeka (Mob AI) Dondurma", mobAi, "Kalabalik chunklardaki canavarlarin", "yapay zekasini kapatarak islemciyi rahatlatir."));
+        // Boş slotları siyah cam panelle doldur
+        ItemStack filler = new ItemStack(Material.BLACK_STAINED_GLASS_PANE);
+        ItemMeta fillerMeta = filler.getItemMeta();
+        if (fillerMeta != null) {
+            fillerMeta.displayName(Component.text(" "));
+            filler.setItemMeta(fillerMeta);
+        }
+        for (int i = 0; i < 27; i++) {
+            inv.setItem(i, filler.clone());
+        }
+
+        inv.setItem(10, createGuiItem(Material.DIAMOND_PICKAXE, Component.text("⛏ Anında Blok Toplama", NamedTextColor.YELLOW), blockDrops, "Blokları kırıldığında direkt envantere alır,", "Yere düşen eşya lagını engeller."));
+        inv.setItem(12, createGuiItem(Material.ENDER_EYE, Component.text("👁 Oyuncu Render Optimizasyonu", NamedTextColor.AQUA), playerRender, "Kalabalık alanlarda uzaktaki oyuncuları", "NMS/Render motorundan gizler."));
+        inv.setItem(14, createGuiItem(Material.TNT, Component.text("💣 Patlama Drop Optimizasyonu", NamedTextColor.RED), explosionDrops, "TNT patlamalarından çıkan tüm eşyaları", "anında silerek devasa FPS düşüşlerini önler."));
+        inv.setItem(16, createGuiItem(Material.ZOMBIE_HEAD, Component.text("🧟 Yapay Zeka (Mob AI) Dondurma", NamedTextColor.DARK_PURPLE), mobAi, "Kalabalık chunklardaki canavarların", "yapay zekasını kapatarak işlemciyi rahatlatır."));
 
         player.openInventory(inv);
     }
 
-    private ItemStack createGuiItem(Material material, String name, boolean state, String... lore) {
+    private ItemStack createGuiItem(Material material, Component name, boolean state, String... lore) {
         ItemStack item = new ItemStack(material);
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
-            meta.setDisplayName(name);
-            List<String> loreList = new ArrayList<>();
-            for (String l : lore) loreList.add(ChatColor.GRAY + l);
-            loreList.add("");
-            loreList.add(state ? ChatColor.GREEN + " DURUM: ACIK (Tikla ve Kapat)" : ChatColor.RED + " DURUM: KAPALI (Tikla ve Ac)");
-            meta.setLore(loreList);
+            meta.displayName(name);
+            List<Component> loreList = new ArrayList<>();
+            for (String l : lore) loreList.add(Component.text(l, NamedTextColor.GRAY));
+            loreList.add(Component.empty());
+            loreList.add(state
+                ? Component.text("✔ DURUM: AÇIK", NamedTextColor.GREEN).append(Component.text(" (Tıkla ve Kapat)", NamedTextColor.DARK_GREEN))
+                : Component.text("✘ DURUM: KAPALI", NamedTextColor.RED).append(Component.text(" (Tıkla ve Aç)", NamedTextColor.DARK_RED)));
+            meta.lore(loreList);
             item.setItemMeta(meta);
         }
         return item;
@@ -98,26 +112,41 @@ public class TpsOptimizer implements Listener, CommandExecutor {
 
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
-        if (!event.getView().getTitle().equals(GUI_NAME)) return;
+        Component title = event.getView().title();
+        if (!title.equals(GUI_NAME)) return;
         event.setCancelled(true);
         if (!(event.getWhoClicked() instanceof Player player)) return;
         if (event.getCurrentItem() == null || event.getCurrentItem().getType() == Material.AIR) return;
 
         int slot = event.getSlot();
         String path = "";
+        String featureName = "";
 
-        if (slot == 10) path = "tps_optimizer.block_drops";
-        else if (slot == 12) path = "tps_optimizer.player_render";
-        else if (slot == 14) path = "tps_optimizer.explosion_drops";
-        else if (slot == 16) path = "tps_optimizer.mob_ai";
+        if (slot == 10) { path = "tps_optimizer.block_drops"; featureName = "Anında Blok Toplama"; }
+        else if (slot == 12) { path = "tps_optimizer.player_render"; featureName = "Oyuncu Render Optimizasyonu"; }
+        else if (slot == 14) { path = "tps_optimizer.explosion_drops"; featureName = "Patlama Drop Optimizasyonu"; }
+        else if (slot == 16) { path = "tps_optimizer.mob_ai"; featureName = "Mob AI Dondurma"; }
         else return;
 
         boolean currentState = plugin.getConfig().getBoolean(path);
-        plugin.getConfig().set(path, !currentState);
+        boolean newState = !currentState;
+        plugin.getConfig().set(path, newState);
         plugin.saveConfig();
 
         player.playSound(player.getLocation(), org.bukkit.Sound.UI_BUTTON_CLICK, 1f, 1f);
-        openGui(player); // Yenile
+        
+        // Durum değişikliğinde bilgi mesajı
+        if (newState) {
+            player.sendMessage(Component.text("✔ ", NamedTextColor.GREEN)
+                .append(Component.text(featureName, NamedTextColor.YELLOW))
+                .append(Component.text(" aktif edildi!", NamedTextColor.GREEN)));
+        } else {
+            player.sendMessage(Component.text("✘ ", NamedTextColor.RED)
+                .append(Component.text(featureName, NamedTextColor.YELLOW))
+                .append(Component.text(" devre dışı bırakıldı.", NamedTextColor.RED)));
+        }
+        
+        openGui(player);
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
@@ -210,7 +239,7 @@ public class TpsOptimizer implements Listener, CommandExecutor {
                         for (Entity entity : chunk.getEntities()) {
                             if (entity instanceof LivingEntity living && !(entity instanceof Player)) {
                                 if (living.hasAI() == overload) {
-                                    living.setAI(!overload); 
+                                    living.setAI(!overload);
                                 }
                             }
                         }

@@ -1,6 +1,7 @@
 package tr.com.havasaldirisi;
 
-import org.bukkit.ChatColor;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -24,36 +25,36 @@ public class BarisKeserToolsCommand implements CommandExecutor, TabCompleter {
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, String[] args) {
         if (!sender.hasPermission("bariskesertools.admin") && !sender.isOp()) {
-            sender.sendMessage(ChatColor.RED + "Bunun için yetkin yok!");
+            sender.sendMessage(Component.text("Bunun için yetkin yok!", NamedTextColor.RED));
             return true;
         }
 
         if (args.length == 0) {
-            sender.sendMessage(ChatColor.YELLOW + "Kullanım: " + ChatColor.AQUA + "/bariskesertools <updatecheck|update|komutlar>");
+            sender.sendMessage(Component.text("Kullanım: ", NamedTextColor.YELLOW).append(Component.text("/bariskesertools <updatecheck|update|komutlar>", NamedTextColor.AQUA)));
             return true;
         }
 
         switch (args[0].toLowerCase()) {
             case "updatecheck":
-                sender.sendMessage(ChatColor.GREEN + "Github üzerinden güncellemeler kontrol ediliyor...");
+                sender.sendMessage(Component.text("Github üzerinden güncellemeler kontrol ediliyor...", NamedTextColor.GREEN));
                 updater.checkForUpdates(sender, false);
                 break;
             case "update":
-                sender.sendMessage(ChatColor.GREEN + "Güncelleme mevcutsa indirme işlemi başlatılıyor...");
+                sender.sendMessage(Component.text("Güncelleme mevcutsa indirme işlemi başlatılıyor...", NamedTextColor.GREEN));
                 updater.checkForUpdates(sender, true);
                 break;
             case "komutlar":
-                sender.sendMessage(ChatColor.GOLD + "--- BarisKeserTools Komutları ---");
-                sender.sendMessage(ChatColor.AQUA + "/bariskesertools " + ChatColor.WHITE + "- Ana menü (updatecheck / update / komutlar)");
-                sender.sendMessage(ChatColor.AQUA + "/havasaldirisi " + ChatColor.WHITE + "- Hava saldırısı başlatan olta");
-                sender.sendMessage(ChatColor.AQUA + "/chunk-yiyici " + ChatColor.WHITE + "- Dibe kadar delen matkap TNT oltası");
-                sender.sendMessage(ChatColor.AQUA + "/tntsil " + ChatColor.WHITE + "- Dünyadaki tüm TNT'leri imha eder");
-                sender.sendMessage(ChatColor.AQUA + "/itemsil " + ChatColor.WHITE + "- Yerdeki tüm eşyaları/dropları siler");
-                sender.sendMessage(ChatColor.AQUA + "/eşyayahasarver " + ChatColor.WHITE + "- Elindeki eşyanın canını düşürür");
-                sender.sendMessage(ChatColor.AQUA + "/tum-envantere-hasar-ver-rasgele " + ChatColor.WHITE + "- Rastgele bütün bir zırh/alet setine hasar vurur");
+                sender.sendMessage(Component.text("--- BarisKeserTools Komutları ---", NamedTextColor.GOLD));
+                sender.sendMessage(Component.text("/bariskesertools ", NamedTextColor.AQUA).append(Component.text("- Ana menü (updatecheck / update / komutlar)", NamedTextColor.WHITE)));
+                sender.sendMessage(Component.text("/havasaldirisi ", NamedTextColor.AQUA).append(Component.text("- Hava saldırısı başlatan olta", NamedTextColor.WHITE)));
+                sender.sendMessage(Component.text("/chunk-yiyici ", NamedTextColor.AQUA).append(Component.text("- Dibe kadar delen matkap TNT oltası", NamedTextColor.WHITE)));
+                sender.sendMessage(Component.text("/tntsil ", NamedTextColor.AQUA).append(Component.text("- Dünyadaki tüm TNT'leri imha eder", NamedTextColor.WHITE)));
+                sender.sendMessage(Component.text("/itemsil ", NamedTextColor.AQUA).append(Component.text("- Yerdeki tüm eşyaları/dropları siler", NamedTextColor.WHITE)));
+                sender.sendMessage(Component.text("/eşyayahasarver ", NamedTextColor.AQUA).append(Component.text("- Elindeki eşyanın canını düşürür", NamedTextColor.WHITE)));
+                sender.sendMessage(Component.text("/tum-envantere-hasar-ver-rasgele ", NamedTextColor.AQUA).append(Component.text("- Rastgele bütün bir zırh/alet setine hasar vurur", NamedTextColor.WHITE)));
                 break;
             default:
-                sender.sendMessage(ChatColor.RED + "Bilinmeyen parametre! Geçerli parametreler: updatecheck, update, komutlar");
+                sender.sendMessage(Component.text("Bilinmeyen parametre! Geçerli parametreler: updatecheck, update, komutlar", NamedTextColor.RED));
                 break;
         }
         return true;
