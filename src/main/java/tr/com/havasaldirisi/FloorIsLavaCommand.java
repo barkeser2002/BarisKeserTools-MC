@@ -411,13 +411,30 @@ public class FloorIsLavaCommand implements CommandExecutor, TabCompleter, Listen
                         p.playSound(p.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 1.0f, 1.0f);
                     }
                     
+                    // ===================================
+                    // Eklenti Uyumluluğu Güvenlik Önlemleri
+                    // ===================================
+                    
+                    // 1. WorldGuard (Bölge korumalarını kırabilmeleri için globale build allow ve pvp allow atarız)
+                    Bukkit.getServer().dispatchCommand(Bukkit.getConsoleSender(), "rg flag __global__ build allow -w " + world.getName());
+                    Bukkit.getServer().dispatchCommand(Bukkit.getConsoleSender(), "rg flag __global__ pvp allow -w " + world.getName());
+                    Bukkit.getServer().dispatchCommand(Bukkit.getConsoleSender(), "rg flag __global__ damage-animals allow -w " + world.getName());
+                    
                     for (Player p : targetPlayers) {
+                        // 2. Essentials (God Mode ve Fly buglarını engelle)
+                        Bukkit.getServer().dispatchCommand(Bukkit.getConsoleSender(), "god " + p.getName() + " disable");
+                        Bukkit.getServer().dispatchCommand(Bukkit.getConsoleSender(), "fly " + p.getName() + " disable");
+                        
                         // Envanteri temizle ve starter kit ver
                         p.getInventory().clear();
                         p.getInventory().setArmorContents(null);
                         p.setHealth(20.0);
                         p.setFoodLevel(20);
                         p.setSaturation(10.0f);
+                        p.setAllowFlight(false);
+                        p.setFlying(false);
+                        p.setWalkSpeed(0.2f);
+                        p.setFlySpeed(0.1f);
                         p.setGameMode(GameMode.SURVIVAL);
                         p.getInventory().addItem(new ItemStack(Material.STONE_SWORD, 1));
                         p.getInventory().addItem(new ItemStack(Material.STONE_PICKAXE, 1));
