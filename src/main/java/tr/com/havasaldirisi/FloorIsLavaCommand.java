@@ -586,7 +586,106 @@ public class FloorIsLavaCommand implements CommandExecutor, TabCompleter, Listen
         participants.remove(p.getUniqueId());
     }
 
+    @EventHandler
+    public void onPlayerJoin(org.bukkit.event.player.PlayerJoinEvent event) {
+        Player p = event.getPlayer();
+        World world = p.getWorld();
+        
+        if (activeGames.containsKey(world.getUID())) {
+            LavaGame game = activeGames.get(world.getUID());
+            if (game != null) {
+                p.setGameMode(GameMode.SPECTATOR);
+            }
+        }
+        
+        handleLobbyItem(p, world);
+    }
 
+    @EventHandler
+    public void onPlayerChangedWorld(org.bukkit.event.player.PlayerChangedWorldEvent event) {
+        handleLobbyItem(event.getPlayer(), event.getPlayer().getWorld());
+    }
+
+    private void handleLobbyItem(Player p, World world) {
+        if (!world.getName().equalsIgnoreCase("lobby")) return;
+        
+        boolean hasActiveGame = false;
+        for (LavaGame game : activeGames.values()) {
+            if (game != null) {
+                hasActiveGame = true;
+                break;
+            }
+        }
+        
+        if (hasActiveGame) {
+            ItemStack spectatorItem = new ItemStack(Material.ENDER_EYE);
+            org.bukkit.inventory.meta.ItemMeta meta = spectatorItem.getItemMeta();
+            if (meta != null) {
+                meta.displayName(Component.text("İzlemeye geç", NamedTextColor.RED).decoration(TextDecoration.BOLD, true));
+                meta.lore(java.util.Collections.singletonList(Component.text("Sağ tıklayarak etkinliği izle!", NamedTextColor.GRAY)));
+                spectatorItem.setItemMeta(meta);
+            }
+            
+            boolean hasItem = false;
+            for (ItemStack item : p.getInventory().getContents()) {
+                if (item != null && item.getType() == Material.ENDER_EYE && item.hasItemMeta() && 
+                    item.getItemMeta().hasDisplayName() && toLegacy(item.getItemMeta().displayName()).contains("İzlemeye geç")) {
+                    hasItem = true;
+                    break;
+                }
+            }
+            
+            if (!hasItem) {
+                p.getInventory().setItem(4, spectatorItem);
+            }
+        } else {
+            for (int i = 0; i < p.getInventory().getSize(); i++) {
+                ItemStack item = p.getInventory().getItem(i);
+                if (item != null && item.getType() == Material.ENDER_EYE && item.hasItemMeta() && 
+                    item.getItemMeta().hasDisplayName() && toLegacy(item.getItemMeta().displayName()).contains("İzlemeye geç")) {
+                    p.getInventory().setItem(i, null);
+                }
+            }
+        }
+    }
+
+    @EventHandler
+    public void onPlayerInteractLobby(org.bukkit.event.player.PlayerInteractEvent event) {
+        Player p = event.getPlayer();
+        if (!p.getWorld().getName().equalsIgnoreCase("lobby")) return;
+        
+        if (event.getAction() != org.bukkit.event.block.Action.RIGHT_CLICK_AIR && 
+            event.getAction() != org.bukkit.event.block.Action.RIGHT_CLICK_BLOCK) {
+            return;
+        }
+        
+        ItemStack item = event.getItem();
+        if (item != null && item.getType() == Material.ENDER_EYE && item.hasItemMeta() && 
+            item.getItemMeta().hasDisplayName() && toLegacy(item.getItemMeta().displayName()).contains("İzlemeye geç")) {
+            
+            event.setCancelled(true);
+            
+            LavaGame active = null;
+            for (LavaGame game : activeGames.values()) {
+                if (game != null) {
+                    active = game;
+                    break;
+                }
+            }
+            
+            if (active != null) {
+                p.getInventory().remove(item);
+                Location specLoc = active.center.clone();
+                specLoc.setY(active.world.getHighestBlockYAt(specLoc.getBlockX(), specLoc.getBlockZ()) + 20);
+                p.teleport(specLoc);
+                p.setGameMode(GameMode.SPECTATOR);
+                p.sendMessage(Component.text("Etkinliğe izleyici olarak katıldın!", NamedTextColor.GREEN));
+            } else {
+                p.sendMessage(Component.text("Şu anda aktif bir etkinlik yok!", NamedTextColor.RED));
+                p.getInventory().remove(item);
+            }
+        }
+    }
     @EventHandler
     public void onPlayerMove(org.bukkit.event.player.PlayerMoveEvent event) {
         Location to = event.getTo();
@@ -985,15 +1084,37 @@ public class FloorIsLavaCommand implements CommandExecutor, TabCompleter, Listen
             int cx = center.getBlockX();
             int cz = center.getBlockZ();
             
-            for (int x = cx - radius; x <= cx + radius; x++) {
-                for (int z = cz - radius; z <= cz + radius; z++) {
-                    Block block = world.getBlockAt(x, y, z);
-                    Material t = block.getType();
-                    if (t.isAir() || t == Material.WATER || t == Material.SEAGRASS || t == Material.TALL_SEAGRASS || t == Material.KELP || t == Material.KELP_PLANT || t == Material.SNOW || t == Material.FERN || t == Material.GRASS || t == Material.TALL_GRASS) {
-                        block.setType(risingBlock, false);
+            new BukkitRunnable() {
+                int x = cx - radius;
+                int z = cz - radius;
+                final int maxPerTick = Math.max(2500, (borderSize * borderSize) / 40);
+
+                @Override
+                public void run() {
+                    if (gameEnded) {
+                        this.cancel();
+                        return;
                     }
+                    int count = 0;
+                    while (x <= cx + radius) {
+                        while (z <= cz + radius) {
+                            Block block = world.getBlockAt(x, y, z);
+                            Material t = block.getType();
+                            if (t.isAir() || t == Material.WATER || t == Material.SEAGRASS || t == Material.TALL_SEAGRASS || t == Material.KELP || t == Material.KELP_PLANT || t == Material.SNOW || t == Material.FERN || t == Material.GRASS || t == Material.TALL_GRASS) {
+                                block.setType(risingBlock, false);
+                            }
+                            z++;
+                            count++;
+                            if (count >= maxPerTick) {
+                                return; // Yükü diğer ticklere böl
+                            }
+                        }
+                        z = cz - radius;
+                        x++;
+                    }
+                    this.cancel();
                 }
-            }
+            }.runTaskTimer(plugin, 0L, 1L);
         }
 
         public void cleanup() {
