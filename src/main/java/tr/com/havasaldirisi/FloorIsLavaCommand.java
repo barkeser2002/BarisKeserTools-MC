@@ -511,8 +511,18 @@ public class FloorIsLavaCommand implements CommandExecutor, TabCompleter, Listen
                     
                     world.playSound(p.getLocation(), Sound.ENTITY_PLAYER_DEATH, 1.0f, 1.0f);
                     
-                    p.setGameMode(GameMode.SPECTATOR);
                     game.eliminatedPlayers.add(p.getUniqueId());
+                    
+                    World lobby = Bukkit.getWorld("lobby");
+                    if (lobby == null && Bukkit.getWorlds().size() > 0) {
+                        lobby = Bukkit.getWorlds().get(0);
+                    }
+                    if (lobby != null) {
+                        p.teleport(lobby.getSpawnLocation());
+                        p.setGameMode(GameMode.SURVIVAL);
+                    } else {
+                        p.setGameMode(GameMode.SPECTATOR);
+                    }
                     
                     // Ölüm nedenini ve öldüren kişiyi belirle
                     Component deathMessage;
@@ -608,19 +618,45 @@ public class FloorIsLavaCommand implements CommandExecutor, TabCompleter, Listen
         Player p = event.getPlayer();
         World world = p.getWorld();
         
-        if (activeGames.containsKey(world.getUID())) {
-            LavaGame game = activeGames.get(world.getUID());
-            if (game != null) {
-                p.setGameMode(GameMode.SPECTATOR);
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (!p.isOnline()) return;
+                World currentWorld = p.getWorld();
+                if (activeGames.containsKey(currentWorld.getUID())) {
+                    LavaGame game = activeGames.get(currentWorld.getUID());
+                    if (game != null) {
+                        p.setGameMode(GameMode.SPECTATOR);
+                        p.sendMessage(Component.text("Etkinlik devam ediyor, elendiğiniz için izleyici modundasınız.", NamedTextColor.YELLOW));
+                    }
+                }
             }
-        }
+        }.runTaskLater(plugin, 15L);
         
         handleLobbyItem(p, world);
     }
 
     @EventHandler
     public void onPlayerChangedWorld(org.bukkit.event.player.PlayerChangedWorldEvent event) {
-        handleLobbyItem(event.getPlayer(), event.getPlayer().getWorld());
+        Player p = event.getPlayer();
+        World world = p.getWorld();
+        
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (!p.isOnline()) return;
+                World currentWorld = p.getWorld();
+                if (activeGames.containsKey(currentWorld.getUID())) {
+                    LavaGame game = activeGames.get(currentWorld.getUID());
+                    if (game != null) {
+                        p.setGameMode(GameMode.SPECTATOR);
+                        p.sendMessage(Component.text("Etkinlik devam ediyor, izleyici modundasınız.", NamedTextColor.YELLOW));
+                    }
+                }
+            }
+        }.runTaskLater(plugin, 15L);
+
+        handleLobbyItem(p, world);
     }
 
     private void handleLobbyItem(Player p, World world) {
