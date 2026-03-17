@@ -99,14 +99,6 @@ public class HavaSaldirisiPlugin extends JavaPlugin implements Listener {
         }
         getServer().getPluginManager().registerEvents(floorIsLava, this);
 
-        // =========================================
-        // TPS ve Oyun Içi Güçlendirme Optimizasyonu
-        // =========================================
-        TpsOptimizer tpsOptimizer = new TpsOptimizer(this);
-        getServer().getPluginManager().registerEvents(tpsOptimizer, this);
-        if (getCommand("baris-optimizasyon") != null) {
-            getCommand("baris-optimizasyon").setExecutor(tpsOptimizer);
-        }
 
         getLogger().info("Hava Saldirisi Eklentisi (Plugin) aktif edildi!");
     }
