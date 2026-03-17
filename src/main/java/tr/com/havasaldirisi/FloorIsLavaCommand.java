@@ -609,44 +609,51 @@ public class FloorIsLavaCommand implements CommandExecutor, TabCompleter, Listen
     private void handleLobbyItem(Player p, World world) {
         if (!world.getName().equalsIgnoreCase("lobby")) return;
         
-        boolean hasActiveGame = false;
-        for (LavaGame game : activeGames.values()) {
-            if (game != null) {
-                hasActiveGame = true;
-                break;
-            }
-        }
-        
-        if (hasActiveGame) {
-            ItemStack spectatorItem = new ItemStack(Material.ENDER_EYE);
-            org.bukkit.inventory.meta.ItemMeta meta = spectatorItem.getItemMeta();
-            if (meta != null) {
-                meta.displayName(Component.text("İzlemeye geç", NamedTextColor.RED).decoration(TextDecoration.BOLD, true));
-                meta.lore(java.util.Collections.singletonList(Component.text("Sağ tıklayarak etkinliği izle!", NamedTextColor.GRAY)));
-                spectatorItem.setItemMeta(meta);
-            }
-            
-            boolean hasItem = false;
-            for (ItemStack item : p.getInventory().getContents()) {
-                if (item != null && item.getType() == Material.ENDER_EYE && item.hasItemMeta() && 
-                    item.getItemMeta().hasDisplayName() && toLegacy(item.getItemMeta().displayName()).contains("İzlemeye geç")) {
-                    hasItem = true;
-                    break;
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (!p.isOnline() || !p.getWorld().getName().equalsIgnoreCase("lobby")) return;
+
+                boolean hasActiveGame = false;
+                for (LavaGame game : activeGames.values()) {
+                    if (game != null) {
+                        hasActiveGame = true;
+                        break;
+                    }
+                }
+                
+                if (hasActiveGame) {
+                    ItemStack spectatorItem = new ItemStack(Material.ENDER_EYE);
+                    org.bukkit.inventory.meta.ItemMeta meta = spectatorItem.getItemMeta();
+                    if (meta != null) {
+                        meta.displayName(Component.text("İzlemeye geç", NamedTextColor.RED).decoration(TextDecoration.BOLD, true));
+                        meta.lore(java.util.Collections.singletonList(Component.text("Sağ tıklayarak etkinliği izle!", NamedTextColor.GRAY)));
+                        spectatorItem.setItemMeta(meta);
+                    }
+                    
+                    boolean hasItem = false;
+                    for (ItemStack item : p.getInventory().getContents()) {
+                        if (item != null && item.getType() == Material.ENDER_EYE && item.hasItemMeta() && 
+                            item.getItemMeta().hasDisplayName() && toLegacy(item.getItemMeta().displayName()).contains("İzlemeye geç")) {
+                            hasItem = true;
+                            break;
+                        }
+                    }
+                    
+                    if (!hasItem) {
+                        p.getInventory().setItem(4, spectatorItem);
+                    }
+                } else {
+                    for (int i = 0; i < p.getInventory().getSize(); i++) {
+                        ItemStack item = p.getInventory().getItem(i);
+                        if (item != null && item.getType() == Material.ENDER_EYE && item.hasItemMeta() && 
+                            item.getItemMeta().hasDisplayName() && toLegacy(item.getItemMeta().displayName()).contains("İzlemeye geç")) {
+                            p.getInventory().setItem(i, null);
+                        }
+                    }
                 }
             }
-            
-            if (!hasItem) {
-                p.getInventory().setItem(4, spectatorItem);
-            }
-        } else {
-            for (int i = 0; i < p.getInventory().getSize(); i++) {
-                ItemStack item = p.getInventory().getItem(i);
-                if (item != null && item.getType() == Material.ENDER_EYE && item.hasItemMeta() && 
-                    item.getItemMeta().hasDisplayName() && toLegacy(item.getItemMeta().displayName()).contains("İzlemeye geç")) {
-                    p.getInventory().setItem(i, null);
-                }
-            }
-        }
+        }.runTaskLater(plugin, 10L); // MV-Inventories için 10 tick gecikme
     }
 
     @EventHandler
@@ -1120,6 +1127,33 @@ public class FloorIsLavaCommand implements CommandExecutor, TabCompleter, Listen
         public void cleanup() {
             bossBar.removeAll();
             world.getWorldBorder().reset();
+            
+            // Bütün oyuncuları lobby dünyasına ışınla ve sıfırla
+            World lobby = Bukkit.getWorld("lobby");
+            if (lobby == null && Bukkit.getWorlds().size() > 0) {
+                lobby = Bukkit.getWorlds().get(0);
+            }
+            if (lobby != null) {
+                for (Player p : world.getPlayers()) {
+                    p.teleport(lobby.getSpawnLocation());
+                    p.setGameMode(GameMode.SURVIVAL);
+                    p.getInventory().clear();
+                    p.getInventory().setArmorContents(null);
+                    p.setHealth(20.0);
+                    p.setFoodLevel(20);
+                    p.setFireTicks(0);
+                    for (org.bukkit.potion.PotionEffect effect : p.getActivePotionEffects()) {
+                        p.removePotionEffect(effect.getType());
+                    }
+                    p.sendMessage(Component.text("Etkinlik bitti, lobiye gönderildiniz.", NamedTextColor.YELLOW));
+                }
+            }
+            
+            // Dünyayı sil
+            String wName = world.getName();
+            Bukkit.getServer().dispatchCommand(Bukkit.getConsoleSender(), "mv delete " + wName);
+            Bukkit.getServer().dispatchCommand(Bukkit.getConsoleSender(), "mv confirm");
+            
             try { this.cancel(); } catch (IllegalStateException ignored) {}
         }
     }
