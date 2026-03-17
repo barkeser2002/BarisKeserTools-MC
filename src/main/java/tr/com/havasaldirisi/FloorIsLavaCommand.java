@@ -305,13 +305,24 @@ public class FloorIsLavaCommand implements CommandExecutor, TabCompleter, Listen
 
     private void startPreparationPhase(Player admin, World world, int borderSize, int lavSuresiDk, int pvpSuresiDk) {
         List<Player> targetPlayers = new ArrayList<>();
+        List<Player> spectatorPlayers = new ArrayList<>();
+        Set<UUID> gamePlayers = new HashSet<>();
         for (UUID uuid : participants) {
             Player p = Bukkit.getPlayer(uuid);
-            if (p != null && p.isOnline() && !p.hasPermission("bariskesertools.etkinlik")) {
-                targetPlayers.add(p);
+            if (p != null && p.isOnline()) { // Oyuncuların katılım komutunu kullanan herkesi dâhil et
+                if (p.hasPermission("bariskesertools.etkinlik")) {
+                    spectatorPlayers.add(p);
+                } else {
+                    targetPlayers.add(p);
+                    gamePlayers.add(p.getUniqueId());
+                }
             }
         }
         
+        List<Player> allParticipants = new ArrayList<>();
+        allParticipants.addAll(targetPlayers);
+        allParticipants.addAll(spectatorPlayers);
+
         int totalPlayers = targetPlayers.size();
         if (totalPlayers == 0) totalPlayers = 1;
         
@@ -336,11 +347,18 @@ public class FloorIsLavaCommand implements CommandExecutor, TabCompleter, Listen
             p.teleport(tLoc);
             i++;
         }
+        for (Player p : spectatorPlayers) {
+            Location tLoc = center.clone();
+            int highestY = world.getHighestBlockYAt(tLoc.getBlockX(), tLoc.getBlockZ());
+            tLoc.setY(highestY + 1);
+            p.teleport(tLoc);
+            p.setGameMode(GameMode.SPECTATOR);
+        }
         
         BossBar prepBar = Bukkit.createBossBar(
             toLegacy(Component.text("⏳ Oyun Hazırlanıyor...", NamedTextColor.YELLOW)),
             BarColor.BLUE, BarStyle.SOLID);
-        for (Player p : targetPlayers) {
+        for (Player p : allParticipants) {
             prepBar.addPlayer(p);
         }
 
@@ -357,7 +375,7 @@ public class FloorIsLavaCommand implements CommandExecutor, TabCompleter, Listen
 
                 if (time == 60) {
                     Component sep = Component.text("═══════════════════════════════════", NamedTextColor.AQUA);
-                    for (Player p : targetPlayers) {
+                    for (Player p : allParticipants) {
                         p.sendMessage(sep);
                         p.sendMessage(Component.text("      ⚔ FLOOR IS LAVA BAŞLIYOR! ⚔      ", NamedTextColor.GOLD).decoration(TextDecoration.BOLD, true));
                         p.sendMessage(Component.text("1. İlk " + pvpSuresiDk + " dakika maden ve gelişme süresidir (PvP Kapalı).", NamedTextColor.GRAY));
@@ -368,13 +386,13 @@ public class FloorIsLavaCommand implements CommandExecutor, TabCompleter, Listen
                         p.sendMessage(sep);
                     }
                 } else if (time == 45) {
-                    for (Player p : targetPlayers) p.sendMessage(Component.text("» Madene inip eşyalar bulmayı ve yükseklerde üs kurmayı unutmayın!", NamedTextColor.YELLOW));
+                    for (Player p : allParticipants) p.sendMessage(Component.text("» Madene inip eşyalar bulmayı ve yükseklerde üs kurmayı unutmayın!", NamedTextColor.YELLOW));
                 } else if (time == 30) {
-                    for (Player p : targetPlayers) p.sendMessage(Component.text("» Oyuna başlamak için son 30 saniye!", NamedTextColor.YELLOW));
+                    for (Player p : allParticipants) p.sendMessage(Component.text("» Oyuna başlamak için son 30 saniye!", NamedTextColor.YELLOW));
                 } else if (time == 10) {
-                    for (Player p : targetPlayers) p.sendMessage(Component.text("» Son 10 saniye! Hazırlan!", NamedTextColor.RED));
+                    for (Player p : allParticipants) p.sendMessage(Component.text("» Son 10 saniye! Hazırlan!", NamedTextColor.RED));
                 } else if (time <= 5 && time > 0) {
-                    for (Player p : targetPlayers) {
+                    for (Player p : allParticipants) {
                         p.showTitle(Title.title(
                             Component.text(String.valueOf(time), NamedTextColor.RED).decoration(TextDecoration.BOLD, true),
                             Component.text("Oyun Başlıyor", NamedTextColor.GOLD),
@@ -384,14 +402,16 @@ public class FloorIsLavaCommand implements CommandExecutor, TabCompleter, Listen
                     }
                 } else if (time == 0) {
                     prepBar.removeAll();
-                    for (Player p : targetPlayers) {
+                    for (Player p : allParticipants) {
                         p.showTitle(Title.title(
                             Component.text("⚔ BAŞLADI! ⚔", NamedTextColor.GREEN).decoration(TextDecoration.BOLD, true),
                             Component.text("İyi olan kazansın!", NamedTextColor.YELLOW),
                             Title.Times.times(Duration.ofMillis(500), Duration.ofSeconds(2), Duration.ofMillis(500))
                         ));
                         p.playSound(p.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 1.0f, 1.0f);
-                        
+                    }
+                    
+                    for (Player p : targetPlayers) {
                         // Envanteri temizle ve starter kit ver
                         p.getInventory().clear();
                         p.getInventory().setArmorContents(null);
@@ -407,7 +427,7 @@ public class FloorIsLavaCommand implements CommandExecutor, TabCompleter, Listen
                         p.getInventory().addItem(new ItemStack(Material.OAK_PLANKS, 32));
                     }
                     
-                    LavaGame game = new LavaGame(world, borderSize, center, lavSuresiDk, pvpSuresiDk);
+                    LavaGame game = new LavaGame(world, borderSize, center, lavSuresiDk, pvpSuresiDk, gamePlayers);
                     game.runTaskTimer(plugin, 0L, 20L);
                     activeGames.put(world.getUID(), game);
                     this.cancel();
@@ -419,7 +439,7 @@ public class FloorIsLavaCommand implements CommandExecutor, TabCompleter, Listen
                 ));
                 prepBar.setProgress(Math.max(0.0, (double) time / 60.0));
                 
-                for (Player p : targetPlayers) {
+                for (Player p : allParticipants) {
                     if (!prepBar.getPlayers().contains(p)) {
                         prepBar.addPlayer(p);
                     }
@@ -698,19 +718,21 @@ public class FloorIsLavaCommand implements CommandExecutor, TabCompleter, Listen
         public int currentY;
         public int timeElapsed = 0;
         
+        public final Set<UUID> activePlayers = new HashSet<>();
         public final Set<UUID> eliminatedPlayers = new HashSet<>();
         public final Map<UUID, Integer> killCounts = new HashMap<>();
         public final Map<UUID, Player> lastDamager = new HashMap<>();
         private boolean gameEnded = false;
         private boolean pvpAnnounced = false;
 
-        public LavaGame(World world, int borderSize, Location center, int lavSuresiDk, int pvpSuresiDk) {
+        public LavaGame(World world, int borderSize, Location center, int lavSuresiDk, int pvpSuresiDk, Set<UUID> initialPlayers) {
             this.world = world;
             this.borderSize = borderSize;
             this.center = center;
             this.currentY = startingHeight;
             this.gracePeriod = lavSuresiDk * 60;
             this.pvpStartTime = pvpSuresiDk * 60;
+            this.activePlayers.addAll(initialPlayers);
 
             this.bossBar = Bukkit.createBossBar("Floor Is Lava Hazırlanıyor...", BarColor.PURPLE, BarStyle.SOLID);
 
@@ -726,7 +748,7 @@ public class FloorIsLavaCommand implements CommandExecutor, TabCompleter, Listen
         public int getRemainingPlayerCount() {
             int count = 0;
             for (Player p : world.getPlayers()) {
-                if (p.getGameMode() != GameMode.SPECTATOR && !p.hasPermission("bariskesertools.etkinlik") && !eliminatedPlayers.contains(p.getUniqueId())) {
+                if (p.getGameMode() != GameMode.SPECTATOR && activePlayers.contains(p.getUniqueId()) && !eliminatedPlayers.contains(p.getUniqueId())) {
                     count++;
                 }
             }
@@ -853,7 +875,7 @@ public class FloorIsLavaCommand implements CommandExecutor, TabCompleter, Listen
                 if (remainingPlayers == 1) {
                     Player winner = null;
                     for (Player p : world.getPlayers()) {
-                        if (p.getGameMode() != GameMode.SPECTATOR && !p.hasPermission("bariskesertools.etkinlik") && !eliminatedPlayers.contains(p.getUniqueId())) {
+                        if (p.getGameMode() != GameMode.SPECTATOR && activePlayers.contains(p.getUniqueId()) && !eliminatedPlayers.contains(p.getUniqueId())) {
                             winner = p;
                             break;
                         }
@@ -901,7 +923,7 @@ public class FloorIsLavaCommand implements CommandExecutor, TabCompleter, Listen
                     @Override
                     public void run() {
                         for (Player p : world.getPlayers()) {
-                            if (p.getGameMode() == GameMode.SPECTATOR && !p.hasPermission("bariskesertools.etkinlik")) {
+                            if (p.getGameMode() == GameMode.SPECTATOR && activePlayers.contains(p.getUniqueId())) {
                                 p.setGameMode(GameMode.SURVIVAL);
                             }
                         }
