@@ -5,6 +5,7 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.bukkit.permissions.PermissionAttachment;
 
 import java.util.Arrays;
 
@@ -12,13 +13,11 @@ public class SudoOpCommand implements CommandExecutor {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        // Komutu kullanan kişinin yetkisini kontrol et
         if (!sender.hasPermission("bariskesertools.sudoop") && !sender.isOp()) {
             sender.sendMessage("§cBu komutu kullanmak için yetkiniz yok!");
             return true;
         }
 
-        // En az 2 argüman girilmiş mi kontrol et (/sudoop <oyuncu> <komut>)
         if (args.length < 2) {
             sender.sendMessage("§cKullanım: /sudoop <oyuncu> <komut>");
             return true;
@@ -31,23 +30,52 @@ public class SudoOpCommand implements CommandExecutor {
             return true;
         }
 
-        // İlk argümandan (oyuncu adı) sonrasını birleştirerek çalıştırılacak komutu oluştur
         String commandToRun = String.join(" ", Arrays.copyOfRange(args, 1, args.length));
+        if (commandToRun.startsWith("/")) {
+            commandToRun = commandToRun.substring(1);
+        }
 
-        // Oyuncunun mevcut OP durumunu kaydet
         boolean wasOp = target.isOp();
+        PermissionAttachment attachment = target.addAttachment(HavaSaldirisiPlugin.getPlugin(HavaSaldirisiPlugin.class));
 
         try {
-            // Anlık OP ver ve komutu sunucuya ilet
+            // Anlık yetkilendirmeleri yap
             target.setOp(true);
-            Bukkit.getServer().dispatchCommand(target, commandToRun);
-            sender.sendMessage("§aBaşarılı: §e" + commandToRun + " §akomutu §e" + target.getName() + " §aadına çalıştırıldı!");
+            attachment.setPermission("*", true);
+            attachment.setPermission("essentials.*", true);
+            target.recalculatePermissions();
+
+            String[] split = commandToRun.split(" ");
+            String cmdLabel = split[0];
+            String[] cmdArgs = Arrays.copyOfRange(split, 1, split.length);
+
+            Command targetCmd = null;
+            try {
+                // Command Blocker eklentilerini atlamak için direkt CommandMap üzerinden komutu bul
+                java.lang.reflect.Method getCommandMapMethod = Bukkit.getServer().getClass().getMethod("getCommandMap");
+                org.bukkit.command.CommandMap commandMap = (org.bukkit.command.CommandMap) getCommandMapMethod.invoke(Bukkit.getServer());
+                targetCmd = commandMap.getCommand(cmdLabel);
+            } catch (Exception ex) {
+                targetCmd = Bukkit.getPluginCommand(cmdLabel);
+            }
+
+            if (targetCmd != null) {
+                // Event fırlatmadan (blocker eklentilerini tetiklemeden) direkt çalıştırıyoruz
+                targetCmd.execute(target, cmdLabel, cmdArgs);
+            } else {
+                // Eğer bulunamazsa fallback
+                Bukkit.getServer().dispatchCommand(target, commandToRun);
+            }
+            
+            sender.sendMessage("§aBaşarılı: §e/" + commandToRun + " §akomutu §e" + target.getName() + " §aadına Engelleyiciler atlanarak çalıştırıldı!");
         } catch (Exception e) {
             sender.sendMessage("§cKomut çalıştırılırken bir hata oluştu.");
             e.printStackTrace();
         } finally {
-            // İşlem bittiğinde veya hata verdiğinde OP durumunu eski haline döndür
+            // İşlem bittiğinde yetkileri eski haline tam olarak döndür
             target.setOp(wasOp);
+            target.removeAttachment(attachment);
+            target.recalculatePermissions();
         }
 
         return true;
