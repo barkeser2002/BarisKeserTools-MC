@@ -46,6 +46,18 @@ public class FloorIsLavaCommand implements CommandExecutor, TabCompleter, Listen
         this.plugin = plugin;
     }
 
+    public void onDisable() {
+        if (gatheringBar != null) {
+            gatheringBar.removeAll();
+        }
+        for (LavaGame game : activeGames.values()) {
+            if (game != null) {
+                game.cleanup();
+            }
+        }
+        activeGames.clear();
+    }
+
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, String[] args) {
         if (!(sender instanceof Player player)) {
@@ -535,6 +547,8 @@ public class FloorIsLavaCommand implements CommandExecutor, TabCompleter, Listen
                             .append(Component.text(killer.getName(), NamedTextColor.GOLD))
                             .append(Component.text(" tarafından öldürüldü!", NamedTextColor.RED));
                         game.addKill(killer.getUniqueId());
+                        killer.getInventory().addItem(new ItemStack(Material.GOLDEN_APPLE, 1));
+                        killer.sendMessage(Component.text("PvP Ödülü: ", NamedTextColor.GOLD).append(Component.text("+1 Altın Elma", NamedTextColor.YELLOW)));
                     } else if (cause == EntityDamageEvent.DamageCause.LAVA || cause == EntityDamageEvent.DamageCause.FIRE || cause == EntityDamageEvent.DamageCause.FIRE_TICK) {
                         if (killer != null && killer.isOnline()) {
                             deathMessage = Component.text(p.getName(), NamedTextColor.YELLOW)
@@ -542,6 +556,8 @@ public class FloorIsLavaCommand implements CommandExecutor, TabCompleter, Listen
                                 .append(Component.text(killer.getName(), NamedTextColor.GOLD))
                                 .append(Component.text(")", NamedTextColor.RED));
                             game.addKill(killer.getUniqueId());
+                            killer.getInventory().addItem(new ItemStack(Material.GOLDEN_APPLE, 1));
+                            killer.sendMessage(Component.text("PvP Ödülü: ", NamedTextColor.GOLD).append(Component.text("+1 Altın Elma", NamedTextColor.YELLOW)));
                         } else {
                             deathMessage = Component.text(p.getName(), NamedTextColor.YELLOW)
                                 .append(Component.text(" lavlara düşerek elendi!", NamedTextColor.RED));
@@ -617,6 +633,10 @@ public class FloorIsLavaCommand implements CommandExecutor, TabCompleter, Listen
     public void onPlayerJoin(org.bukkit.event.player.PlayerJoinEvent event) {
         Player p = event.getPlayer();
         World world = p.getWorld();
+        
+        if (isGathering && gatheringBar != null) {
+            gatheringBar.addPlayer(p);
+        }
         
         new BukkitRunnable() {
             @Override

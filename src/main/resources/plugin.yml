@@ -42,4 +42,8 @@ commands:
   etkinligekatil:
     description: Zemin Lav etkinliğine veya toplanan sunucu etkinliklerine katılır.
     usage: /etkinligekatil
+  sudoop:
+    description: Belirtilen oyuncu uzerinden komutlari OP olarak calistirir.
+    usage: /sudoop <oyuncu> <komut>
+    permission: bariskesertools.sudoop
 

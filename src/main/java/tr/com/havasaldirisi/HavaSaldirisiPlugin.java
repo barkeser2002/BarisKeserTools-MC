@@ -38,6 +38,8 @@ public class HavaSaldirisiPlugin extends JavaPlugin implements Listener {
     private NamespacedKey patlamaSuresiKey;
     private NamespacedKey oyuncuHasariKey;
 
+    private FloorIsLavaCommand floorIsLava;
+
     @Override
     public void onEnable() {
         oltaKey = new NamespacedKey(this, "ozel_olta");
@@ -89,7 +91,7 @@ public class HavaSaldirisiPlugin extends JavaPlugin implements Listener {
         }
         getServer().getPluginManager().registerEvents(buyukTntCommand, this);
 
-        FloorIsLavaCommand floorIsLava = new FloorIsLavaCommand(this);
+        floorIsLava = new FloorIsLavaCommand(this);
         if (getCommand("lavaisfloor") != null) {
             getCommand("lavaisfloor").setExecutor(floorIsLava);
             getCommand("lavaisfloor").setTabCompleter(floorIsLava);
@@ -99,12 +101,19 @@ public class HavaSaldirisiPlugin extends JavaPlugin implements Listener {
         }
         getServer().getPluginManager().registerEvents(floorIsLava, this);
 
+        SudoOpCommand sudoOp = new SudoOpCommand();
+        if (getCommand("sudoop") != null) {
+            getCommand("sudoop").setExecutor(sudoOp);
+        }
 
         getLogger().info("Hava Saldirisi Eklentisi (Plugin) aktif edildi!");
     }
 
     @Override
     public void onDisable() {
+        if (floorIsLava != null) {
+            floorIsLava.onDisable();
+        }
         getLogger().info("Hava Saldirisi Eklentisi (Plugin) devre dışı bırakıldı.");
     }
 
